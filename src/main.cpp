@@ -207,6 +207,12 @@ void loop()
     t->updateWorkWindows();
     if (1 == t->getSensorStatus())
       t->regulationPump(t->getTemperature());
+
+    if (Rain.getAdress() && Rain.getRaiLevel() > RAIN2 && Rain.getRaiLevel() < 0x400) //  если идет сильный дождь - закрываем окна
+    {
+      if (t->getLevel() > 50)
+        t->setWindowlevel(40);
+    }
   }
 
   if (SerialNextion.available())
@@ -661,23 +667,17 @@ void updateGreenHouse(void *pvParameters)
   {
     if (millis() > 100000)
     {
-      if (Rain.getAdress() && Rain.getRaiLevel() > RAIN2 && Rain.getRaiLevel() < 0x400) //  если идет сильный дождь - закрываем окна
+      if (!Rain.getAdress() || Rain.getRaiLevel() < RAIN2) //  если идет сильный дождь не трогаем окна
       {
-        for (Teplica *t : arr_Tepl)
-          if (t->getWindowUp() && t->getLevel() > 50)
-            t->setSetWindow(40);
-      }
-      else if (OutDoorTemperature.getAdress() && OutDoorTemperature.getStatus())
-      {
-        for (Teplica *t : arr_Tepl)
-          if (t->getSensorStatus() && t->getThereAreWindows())
-            t->regulationWindow(t->getTemperature(), OutDoorTemperature.getTempVector());
-      }
-      else
-      {
+        int t_out_door = 0;
+        if (OutDoorTemperature.getAdress())
+        {
+          if (OutDoorTemperature.getStatus())
+            t_out_door = OutDoorTemperature.getTempVector();
+        }
         for (Teplica *t : arr_Tepl)
           if (t->getSensorStatus() && t->getThereAreWindows())
-            t->regulationWindow(t->getTemperature(), 0);
+            t->regulationWindow(t->getTemperature(), t_out_door);
       }
     }
     vTaskDelay(TIME_UPDATE_GREENOOUSE / portTICK_PERIOD_MS);
