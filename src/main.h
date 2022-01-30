@@ -11,7 +11,6 @@
 #include "MB11016P_ESP.h"
 #include "SensorRain.h"
 #include <Teplica.h>
-
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
@@ -32,10 +31,8 @@ AsyncWebServer server(80);
 #define TXDNEX 22
 #define RXDMASTER 25
 #define TXDMASTER 33
-
 #define ON HIGH
 #define OFF LOW
-
 #define DEBUG_WIFI
 
 const String VER = "Ver - 4.5.0. Date - 29.01.22\r";
@@ -209,25 +206,19 @@ int arr_adr[12];
 int arr_set[8];
 
 boolean counterMB = true;
-// boolean sensorOutTemper = false;
-// boolean sensorRain = false;
-
 TaskHandle_t Task_updateGreenHouse;
 TaskHandle_t Task_updateDateSensor;
 TaskHandle_t Task_webSerialSend;
-
 ModbusRTU slave;
 ModbusIP slaveWiFi;
 ModbusRTU mb_master;
 MB11016P_ESP mb11016p = MB11016P_ESP(&mb_master, 100, 2);
-
 Sensor OutDoorTemperature = Sensor(10, 0, 0);
 SensorRain Rain = SensorRain(1);
 Sensor Tepl4Temperature = Sensor(4, 0, 0);
 Sensor Tepl5Temperature = Sensor(5, 0, 0);
 Sensor Tepl6Temperature = Sensor(6, 0, 0);
 Sensor Tepl7Temperature = Sensor(7, 0, 0);
-
 Teplica Tepl4 = Teplica(4, &Tepl4Temperature, 0, 1, 2, 3, 1, 30, 20, 40, 60, &mb11016p);
 Teplica Tepl5 = Teplica(5, &Tepl5Temperature, 4, 5, 6, 7, 1, 30, 20, 40, 60, &mb11016p);
 Teplica Tepl6 = Teplica(6, &Tepl6Temperature, 8, 9, 10, 11, 1, 30, 20, 40, 60, &mb11016p);
@@ -258,7 +249,6 @@ enum SensorSM200
 };
 
 uint16_t sensor[6] = {0, 0, 0, 0, 0, 0};
-
 void sendNextion(String dev, String data);
 void sendNextion(String dev, int data);
 void sendNextion(String dev);
@@ -280,7 +270,6 @@ void update_mbmaster();
 void update_WiFiConnect();
 void controlScada();
 String calculateTimeWork();
-
 void updateGreenHouse(void *pvParameters);
 void updateDateSensor(void *pvParameters);
 

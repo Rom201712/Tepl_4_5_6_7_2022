@@ -1,25 +1,20 @@
 
 #include "main.h"
-
 void setup()
 {
   pinMode(GPIO_NUM_2, OUTPUT);
-
   Serial.begin(115200);
   Serial.print(VER);
-
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   WiFi.setHostname("Tepl_4_5_6_7");
   Serial.printf("\nConnecting to WiFi..\n");
   int counter_WiFi = 0;
-
   while (WiFi.status() != WL_CONNECTED && counter_WiFi < 10)
   {
     delay(1000);
     counter_WiFi++;
   }
-
   if (WiFi.status() != WL_CONNECTED)
   {
     char *ssid = "yastrebovka";
@@ -32,7 +27,6 @@ void setup()
       counter_WiFi++;
     }
   }
-
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
             { request->send(200, "text/plain", "Greenhaus #4, #5, #6 and #7.\n" + VER + calculateTimeWork() + "\nRSSI: " + String(WiFi.RSSI()) + " db\nRain: " + String(Rain.getRaiLevel())); });
 
@@ -102,41 +96,32 @@ void setup()
 #endif
 
   flash.begin("eerom", false);
-  // sensorOutTemper = flash.getInt("sensorOutTemper", 0);
-  // sensorRain = flash.getInt("sensorRain", 1);
   Serial1.begin(flash.getInt("mspeed", 2400), SERIAL_8N1, RXDMASTER, TXDMASTER, false); // Modbus Master
   Serial2.begin(flash.getInt("sspeed", 19200));                                         // Modbus Slave
   SerialNextion.begin(19200, SWSERIAL_8N1, RXDNEX, TXDNEX, false, 256);
   sendNextion("rest");
   String incStr;
-
   slave.begin(&Serial2);
   slave.slave(IDSLAVE);
-
   slaveWiFi.slave(IDSLAVE);
   slaveWiFi.begin();
-
   mb_master.begin(&Serial1);
   mb_master.master();
-
   for (int i = rs485mode4; i < rs485_HOLDING_REGS_SIZE; i++)
     slave.addHreg(i);
   for (int i = WiFimode4; i < WiFi_HOLDING_REGS_SIZE; i++)
     slave.addIreg(i);
   for (int i = wifi_flag_edit_4; i < wifi_HOLDING_REGS_SIZE; i++)
     slave.addHreg(i);
-
   sensor_SM200[0] = &Tepl4Temperature;
   sensor_SM200[1] = &Tepl5Temperature;
   sensor_SM200[2] = &Tepl6Temperature;
   sensor_SM200[3] = &Tepl7Temperature;
   sensor_SM200[4] = &OutDoorTemperature;
-
   arr_Tepl[0] = &Tepl4;
   arr_Tepl[1] = &Tepl5;
   arr_Tepl[2] = &Tepl6;
   arr_Tepl[3] = &Tepl7;
-
   //считывание параметров установок теплиц из памяти
   for (int i = 0; i < 4; i++)
   {
@@ -154,17 +139,13 @@ void setup()
 
   incStr = flash.getString("adr", "");
   pars_str_adr(incStr);
-
   // первоначальное закрытие окон
   Tepl4.setWindowlevel(-100);
   Tepl5.setWindowlevel(-100);
   Tepl6.setWindowlevel(-100);
   Tepl7.setWindowlevel(-100);
-
   mb11016p.write();
-
   tickerWiFiConnect.attach_ms(600000, update_WiFiConnect); // таймер проверки соединения WiFi (раз в 10 минут)
-
   xTaskCreatePinnedToCore(
       updateDateSensor,        /* Запрос по Modbus по  сети RS485 */
       "Task_updateDateSensor", /* Название задачи */
@@ -175,7 +156,6 @@ void setup()
       1);                      /* Ядро для выполнения задачи (0) */
 
   updateNextion = millis();
-
   xTaskCreatePinnedToCore(
       updateGreenHouse,        /* Регулировка окон*/
       "Task_updateGreenHouse", /* Название задачи */
@@ -184,7 +164,6 @@ void setup()
       2,                       /* Приоритет задачи */
       &Task_updateGreenHouse,  /* Идентификатор задачи, чтобы ее можно было отслеживать */
       0);
-
 #ifdef USE_WEB_SERIAL
   xTaskCreatePinnedToCore(
       webSerialSend,        /* */
@@ -201,7 +180,6 @@ void loop()
   saveOutModBusArr();
   slave.task();
   slaveWiFi.task();
-
   for (Teplica *t : arr_Tepl)
   {
     t->updateWorkWindows();
@@ -214,7 +192,6 @@ void loop()
         t->setWindowlevel(40);
     }
   }
-
   if (SerialNextion.available())
     readNextion();
   if (millis() > updateNextion)
@@ -250,7 +227,6 @@ void pageNextion_p0()
   // вывод температура на улице
   indiOutDoor();
   // вывод символа дождя/солнца
-
   switch (indiRain())
   {
   case 0:
@@ -289,7 +265,6 @@ void pageNextion_p1(int i)
   }
   arr_Tepl[i]->getPump() ? sendNextion("b3.picc", 2) : sendNextion("b3.picc", 1);
   arr_Tepl[i]->getHeat() ? sendNextion("b2.picc", 2) : sendNextion("b2.picc", 1);
-
   switch (arr_Tepl[i]->getMode())
   {
   case Teplica::MANUAL:
@@ -308,7 +283,6 @@ void pageNextion_p1(int i)
 }
 void pageNextion_p2()
 {
-
   if (coun1 < 3)
   {
     String incStr = flash.getString("adr", "");
@@ -366,6 +340,7 @@ int indiRain()
   else
     return 0; //  датчик не установлен
 }
+
 // вывод температура на улице
 void indiOutDoor()
 {
@@ -390,11 +365,11 @@ void indiOutDoor()
     sendNextion("x13.val", "");
   }
 }
+
 // вывод данных теплицы 4
 void indiTepl4()
 {
-
-  if (Tepl4Temperature.getAdress())
+ if (Tepl4Temperature.getAdress())
   { //ввывод температуры и ошибок датчика температуры
     if (1 == Tepl4.getSensorStatus())
     {
@@ -438,6 +413,7 @@ void indiTepl4()
   //идикация состояния дополнительного обогревателя
   Tepl4.getHeat() ? sendNextion("p2.pic", 10) : sendNextion("p2.pic", 9);
 }
+
 // вывод данных теплицы 5
 void indiTepl5()
 {
@@ -485,6 +461,7 @@ void indiTepl5()
   //идикация состояния дополнительного обогревателя
   Tepl5.getHeat() ? sendNextion("p4.pic", 10) : sendNextion("p4.pic", 9);
 }
+
 // вывод данных теплицы 6
 void indiTepl6()
 {
@@ -532,6 +509,7 @@ void indiTepl6()
   //идикация состояния дополнительного обогревателя
   Tepl6.getHeat() ? sendNextion("p6.pic", 10) : sendNextion("p6.pic", 9);
 }
+
 // вывод данных теплицы 7
 void indiTepl7()
 {
@@ -579,6 +557,7 @@ void indiTepl7()
   //идикация состояния дополнительного обогревателя
   Tepl7.getHeat() ? sendNextion("p8.pic", 10) : sendNextion("p8.pic", 9);
 }
+
 // данные с Nextion
 void readNextion()
 {
@@ -602,6 +581,7 @@ void readNextion()
     delay(10);
   }
 }
+
 //получение данных от датчиков температуры и влажности, регулировка отопления
 void updateDateSensor(void *pvParameters)
 {
@@ -660,6 +640,7 @@ void updateDateSensor(void *pvParameters)
     vTaskDelay(TIME_UPDATE_MODBUS / portTICK_PERIOD_MS);
   }
 }
+
 // регулировка окон
 void updateGreenHouse(void *pvParameters)
 {
@@ -813,7 +794,6 @@ void analyseString(String incStr)
     if (incStr.substring(i).startsWith("set")) //
     {
       pars_str_set(incStr);
-      // flash.putString("set1", incStr);
       return;
     }
     if (incStr.substring(i).startsWith("adr")) //
@@ -821,20 +801,6 @@ void analyseString(String incStr)
       pars_str_adr(incStr);
       flash.putString("adr", incStr);
     }
-    // if (incStr.substring(i).startsWith("r0")) //
-    // {
-    //   uint16_t temp = uint16_t(incStr.substring(i + 2, i + 3).toInt());
-    //   temp ? sensorOutTemper = ON : sensorOutTemper = OFF;
-    //   flash.putInt("sensorOutTemper", temp);
-    //   return;
-    // }
-    // if (incStr.substring(i).startsWith("r1")) //
-    // {
-    //   uint16_t temp = uint16_t(incStr.substring(i + 2, i + 3).toInt());
-    //   temp ? sensorRain = ON : sensorRain = OFF;
-    //   flash.putInt("sensorRain", temp);
-    //   return;
-    // }
     if (incStr.substring(i).startsWith("ss")) // изменение скорости шины связи с терминалом
     {
       uint16_t temp = uint16_t(incStr.substring(i + 2, i + 7).toInt());
@@ -853,8 +819,6 @@ void analyseString(String incStr)
     {
       uint16_t tepl = uint16_t(incStr.substring(i + 4, i + 5).toInt());
       uint16_t level = uint16_t(incStr.substring(i + 5, i + 8).toInt());
-      //Serial.println(tepl);
-      //Serial.println(level);
       switch (tepl)
       {
       case 4:
@@ -889,6 +853,7 @@ void sendNextion(String dev, String data)
   uint8_t arj[] = {0xff, 0xff, 0xff};
   SerialNextion.write(arj, 3);
 }
+
 // отправка на Nextion
 void sendNextion(String dev, int data)
 {
@@ -897,6 +862,7 @@ void sendNextion(String dev, int data)
   uint8_t arj[] = {0xff, 0xff, 0xff};
   SerialNextion.write(arj, 3);
 }
+
 // отправка на Nextion
 void sendNextion(String dev)
 {
@@ -1055,7 +1021,6 @@ void update_WiFiConnect()
 {
   /*----настройка Wi-Fi---------*/
   int counter_WiFi = 0;
-
   while (WiFi.status() != WL_CONNECTED && counter_WiFi < 10)
   {
     WiFi.disconnect();
@@ -1074,7 +1039,6 @@ void update_WiFiConnect()
 void controlScada()
 {
   int number = 0xfff;
-
   if (slave.Hreg(wifi_flag_edit_4))
   {
     number = 0;
@@ -1102,13 +1066,10 @@ void controlScada()
   k *= number;
   arr_Tepl[number]->setSetPump(slave.Hreg(wifi_UstavkaPump_4 + k));
   flash.putUInt(String("SetPump" + String(arr_Tepl[number]->getId())).c_str(), slave.Hreg(wifi_UstavkaPump_4 + k));
-
   arr_Tepl[number]->setSetHeat(slave.Hreg(wifi_UstavkaHeat_4 + k));
   flash.putUInt(String("SetHeat" + String(arr_Tepl[number]->getId())).c_str(), slave.Hreg(wifi_UstavkaHeat_4 + k));
-
   arr_Tepl[number]->setSetWindow(slave.Hreg(wifi_UstavkaWin_4 + k));
   flash.putUInt(String("SetSetWindow" + String(arr_Tepl[number]->getId())).c_str(), slave.Hreg(wifi_UstavkaWin_4 + k));
-
   arr_Tepl[number]->setMode(slave.Hreg(wifi_mode_4 + k));
   if (arr_Tepl[number]->getMode() == Teplica::MANUAL)
   {
@@ -1124,7 +1085,6 @@ void controlScada()
 
   arr_Tepl[number]->setHysteresis(slave.Hreg(wifi_hysteresis_4 + k));
   flash.putUInt(String("Hyster" + String(arr_Tepl[number]->getId())).c_str(), slave.Hreg(wifi_hysteresis_4 + k));
-
   arr_Tepl[number]->setOpenTimeWindow(slave.Hreg(wifi_time_open_windows_4 + k));
   flash.putUInt(String("Opentwin" + String(arr_Tepl[number]->getId())).c_str(), slave.Hreg(wifi_time_open_windows_4 + k));
 }
@@ -1162,7 +1122,6 @@ String calculateTimeWork()
   seconds %= 60;
   minutes %= 60;
   hours %= 24;
-
   if (days > 0)
   {
     str += String(days) + " d ";
