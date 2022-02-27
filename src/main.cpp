@@ -272,11 +272,16 @@ void pageNextion_p1(int i)
     break;
   case Teplica::AUTO:
     sendNextion("b0.picc", 1);
+    sendNextion("b2.picc", 1);
+    sendNextion("b1.picc", 1);
     break;
   case Teplica::AIR:
     sendNextion("b0.picc", 1);
     sendNextion("b1.picc", 2);
     break;
+  case Teplica::DECREASE_IN_HUMIDITY:
+    sendNextion("b2.picc", 2);
+    break;  
   default:
     break;
   }
@@ -401,13 +406,17 @@ void indiTepl4()
   sendNextion("x2.val", Tepl4.getSetHeat() / 10);
   //ввывод уставки окно
   sendNextion("x3.val", Tepl4.getSetWindow() / 10);
-  //ввывод уровня открятия окна
+  //ввывод уровня открытия окна
   sendNextion("h0.val", Tepl4.getLevel());
   //ввывод режима работы
   if (Tepl4.getMode() == Teplica::MANUAL)
     sendNextion("page0.t3.txt", "M");
-  if (Tepl4.getMode() == Teplica::AUTO)
+  else if (Tepl4.getMode() == Teplica::AUTO)
     sendNextion("page0.t3.txt", "A");
+  else if (Tepl4.getMode() == Teplica::AIR)
+    sendNextion("page0.t3.txt", "W");
+  else if (Tepl4.getMode() == Teplica::DECREASE_IN_HUMIDITY)
+    sendNextion("page0.t3.txt", "H");
   //идикация состояния насоса
   Tepl4.getPump() ? sendNextion("p1.pic", 10) : sendNextion("p1.pic", 9);
   //идикация состояния дополнительного обогревателя
@@ -449,13 +458,17 @@ void indiTepl5()
   sendNextion("x6.val", Tepl5.getSetHeat() / 10);
   //ввывод уставки окно
   sendNextion("x7.val", Tepl5.getSetWindow() / 10);
-  //ввывод уровня открятия окна
+  //ввывод уровня открытия окна
   sendNextion("h1.val", Tepl5.getLevel());
   //ввывод режима работы
   if (Tepl5.getMode() == Teplica::MANUAL)
     sendNextion("page0.t4.txt", "M");
   if (Tepl5.getMode() == Teplica::AUTO)
     sendNextion("page0.t4.txt", "A");
+    else if (Tepl5.getMode() == Teplica::AIR)
+    sendNextion("page0.t4.txt", "W");
+   else if (Tepl5.getMode() == Teplica::DECREASE_IN_HUMIDITY)
+    sendNextion("page0.t4.txt", "H");  
   //идикация состояния насоса
   Tepl5.getPump() ? sendNextion("p3.pic", 10) : sendNextion("p3.pic", 9);
   //идикация состояния дополнительного обогревателя
@@ -497,13 +510,17 @@ void indiTepl6()
   sendNextion("x10.val", Tepl6.getSetHeat() / 10);
   //ввывод уставки окно
   sendNextion("x11.val", Tepl6.getSetWindow() / 10);
-  //ввывод уровня открятия окна
+  //ввывод уровня открытия окна
   sendNextion("h2.val", Tepl6.getLevel());
   //ввывод режима работы
   if (Tepl6.getMode() == Teplica::MANUAL)
     sendNextion("page0.t5.txt", "M");
   if (Tepl6.getMode() == Teplica::AUTO)
     sendNextion("page0.t5.txt", "A");
+    else if (Tepl6.getMode() == Teplica::AIR)
+    sendNextion("page0.t5.txt", "W");
+     else if (Tepl6.getMode() == Teplica::DECREASE_IN_HUMIDITY)
+     sendNextion("page0.t5.txt", "H");
   //идикация состояния насоса
   Tepl6.getPump() ? sendNextion("p5.pic", 10) : sendNextion("p5.pic", 9);
   //идикация состояния дополнительного обогревателя
@@ -539,19 +556,23 @@ void indiTepl7()
     sendNextion("t9.font", 1);
     sendNextion("t9.txt", "---");
   }
-  //ввывод уставки насос
+  //вывод уставки насос
   sendNextion("x14.val", Tepl7.getSetPump() / 10);
-  //ввывод уставки дополнительный обогреватель
+  //вывод уставки дополнительный обогреватель
   sendNextion("x16.val", Tepl7.getSetHeat() / 10);
-  //ввывод уставки окно
+  //вывод уставки окно
   sendNextion("x17.val", Tepl7.getSetWindow() / 10);
-  //ввывод уровня открытия окна
+  //вывод уровня открытия окна  
   sendNextion("page0.h3.val", Tepl7.getLevel());
-  //ввывод режима работы
+  //вывод режима работы
   if (Tepl7.getMode() == Teplica::MANUAL)
     sendNextion("page0.t6.txt", "M");
   if (Tepl7.getMode() == Teplica::AUTO)
     sendNextion("page0.t6.txt", "A");
+    else if (Tepl7.getMode() == Teplica::AIR)
+    sendNextion("page0.t6.txt", "W");
+     else if (Tepl7.getMode() == Teplica::DECREASE_IN_HUMIDITY)
+    sendNextion("page0.t6.txt", "H");
   //идикация состояния насоса
   Tepl7.getPump() ? sendNextion("p7.pic", 10) : sendNextion("p7.pic", 9);
   //идикация состояния дополнительного обогревателя
@@ -691,63 +712,51 @@ void analyseString(String incStr)
 
     if (incStr.substring(i).startsWith("m4on")) //  переключение режим теплица 4 автомат - ручной
     {
-      Tepl4.getMode() ? Tepl4.setMode(0) : Tepl4.setMode(1);
+      Tepl4.getMode() ? Tepl4.setMode(Teplica::AUTO) : Tepl4.setMode(Teplica::MANUAL);
       slave.Hreg(wifi_mode_4, Tepl4.getMode());
       return;
     }
     if (incStr.substring(i).startsWith("m5on")) //
     {
-      Tepl5.getMode() ? Tepl5.setMode(0) : Tepl5.setMode(1);
+      Tepl5.getMode() ? Tepl5.setMode(Teplica::AUTO) : Tepl5.setMode(Teplica::MANUAL);
       return;
     }
     if (incStr.substring(i).startsWith("m6on")) //
     {
-      Tepl6.getMode() ? Tepl6.setMode(0) : Tepl6.setMode(1);
+      Tepl6.getMode() ? Tepl6.setMode(Teplica::AUTO) : Tepl6.setMode(Teplica::MANUAL);
       return;
     }
     if (incStr.substring(i).startsWith("m7on")) //  переключение режим теплица 7 автомат - ручной
     {
-      Tepl7.getMode() ? Tepl7.setMode(0) : Tepl7.setMode(1);
+      Tepl7.getMode() ? Tepl7.setMode(Teplica::AUTO) : Tepl7.setMode(Teplica::MANUAL);
       return;
     }
     if (incStr.substring(i).startsWith("w4on")) //  переключение режим теплица 4 вентиляция - автомат
     {
-      Tepl4.getMode() == 2 ? Tepl4.setMode(0) : Tepl4.setMode(2);
-      if (2 == Tepl4.getMode())
-        if (OutDoorTemperature.getAdress())
-          Tepl4.air(AIRTIME, OutDoorTemperature.getTemperature());
-        else
-          Tepl4.air(AIRTIME, 0);
+      Tepl4.getMode() == Teplica::AIR ? Tepl4.setMode(Teplica::AUTO) : Tepl4.setMode(Teplica::AIR);
+      if (Teplica::AIR == Tepl4.getMode())
+      Tepl4.air(AIRTIME, 0);
       return;
     }
     if (incStr.substring(i).startsWith("w5on")) //  переключение режим теплица 5 вентиляция - автомат
     {
-      Tepl5.getMode() == 2 ? Tepl5.setMode(0) : Tepl5.setMode(2);
-      if (2 == Tepl5.getMode())
-        if (OutDoorTemperature.getAdress())
-          Tepl5.air(AIRTIME, OutDoorTemperature.getTemperature());
-        else
-          Tepl5.air(AIRTIME, 0);
+      Tepl5.getMode() == Teplica::AIR ? Tepl5.setMode(Teplica::AUTO) : Tepl5.setMode(Teplica::AIR);
+      if (Teplica::AIR == Tepl5.getMode())
+      Tepl5.air(AIRTIME, 0);
       return;
     }
     if (incStr.substring(i).startsWith("w6on")) //  переключение режим теплица 6 вентиляция - автомат
     {
-      Tepl6.getMode() == 2 ? Tepl6.setMode(0) : Tepl6.setMode(2);
-      if (2 == Tepl6.getMode())
-        if (OutDoorTemperature.getAdress())
-          Tepl6.air(AIRTIME, OutDoorTemperature.getTemperature());
-        else
-          Tepl6.air(AIRTIME, 0);
+      Tepl6.getMode() == Teplica::AIR ? Tepl6.setMode(Teplica::AUTO) : Tepl6.setMode(Teplica::AIR);
+      if (Teplica::AIR == Tepl6.getMode())
+      Tepl6.air(AIRTIME, 0);
       return;
     }
     if (incStr.substring(i).startsWith("w7on")) //  переключение режим теплица 7 вентиляция - автомат
     {
-      Tepl7.getMode() == 2 ? Tepl7.setMode(0) : Tepl7.setMode(2);
-      if (2 == Tepl7.getMode())
-        if (OutDoorTemperature.getAdress())
-          Tepl7.air(AIRTIME, OutDoorTemperature.getTemperature());
-        else
-          Tepl7.air(AIRTIME, 0);
+      Tepl7.getMode() == Teplica::AIR ? Tepl7.setMode(Teplica::AIR) : Tepl7.setMode(Teplica::AIR);
+      if (Teplica::AIR == Tepl7.getMode())
+      Tepl7.air(AIRTIME, 0);
       return;
     }
 
@@ -771,24 +780,32 @@ void analyseString(String incStr)
       Tepl7.getPump() ? Tepl7.setPump(OFF) : Tepl7.setPump(ON);
       return;
     }
-    if (incStr.substring(i).startsWith("heat4")) //
+    if (incStr.substring(i).startsWith("dh4")) //
     {
-      Tepl4.getHeat() ? Tepl4.setHeat(OFF) : Tepl4.setHeat(ON);
+      //Tepl4.getHeat() ? Tepl4.setHeat(OFF) : Tepl4.setHeat(ON);
+      Tepl4.setMode(Teplica::DECREASE_IN_HUMIDITY);
+      Tepl4.decrease_in_humidity(AIRTIME, 0);
       return;
     }
-    if (incStr.substring(i).startsWith("heat5")) //
+    if (incStr.substring(i).startsWith("dh5")) //
     {
-      Tepl5.getHeat() ? Tepl5.setHeat(OFF) : Tepl5.setHeat(ON);
+      //Tepl5.getHeat() ? Tepl5.setHeat(OFF) : Tepl5.setHeat(ON);
+      Tepl5.setMode(Teplica::DECREASE_IN_HUMIDITY);
+      Tepl5.decrease_in_humidity(AIRTIME, 0);
       return;
     }
-    if (incStr.substring(i).startsWith("heat6")) //
+    if (incStr.substring(i).startsWith("dh")) //
     {
-      Tepl6.getHeat() ? Tepl6.setHeat(OFF) : Tepl6.setHeat(ON);
+      //Tepl6.getHeat() ? Tepl6.setHeat(OFF) : Tepl6.setHeat(ON);
+      Tepl6.setMode(Teplica::DECREASE_IN_HUMIDITY);
+      Tepl6.decrease_in_humidity(AIRTIME, 0);
       return;
     }
-    if (incStr.substring(i).startsWith("heat7")) //
+    if (incStr.substring(i).startsWith("dh")) //
     {
-      Tepl7.getHeat() ? Tepl7.setHeat(OFF) : Tepl7.setHeat(ON);
+      //Tepl7.getHeat() ? Tepl7.setHeat(OFF) : Tepl7.setHeat(ON);
+      Tepl7.setMode(Teplica::DECREASE_IN_HUMIDITY);
+      Tepl7.decrease_in_humidity(AIRTIME, 0);
       return;
     }
     if (incStr.substring(i).startsWith("set")) //
@@ -1029,10 +1046,10 @@ void update_WiFiConnect()
     counter_WiFi++;
     delay(1000);
   }
-  if (WiFi.status() == WL_CONNECTED)
-    Serial.printf("Connect to:\t%s\n", ssid);
-  else
-    Serial.printf("Dont connect to: %s\n", ssid);
+  // if (WiFi.status() == WL_CONNECTED)
+  //   Serial.printf("Connect to:\t%s\n", ssid);
+  // else
+  //   Serial.printf("Dont connect to: %s\n", ssid);
 }
 
 /*--------------------------------------- изменения параметров с компьютера ------------------------------------*/
@@ -1078,10 +1095,9 @@ void controlScada()
     arr_Tepl[number]->setHeat(slave.Hreg(wifi_heat_4 + k));
   }
   if (arr_Tepl[number]->getMode() == Teplica::AIR)
-    if (OutDoorTemperature.getAdress())
-      arr_Tepl[number]->air(AIRTIME, OutDoorTemperature.getTemperature());
-    else
-      arr_Tepl[number]->air(AIRTIME, 0);
+    arr_Tepl[number]->air(AIRTIME, 0);
+  if (arr_Tepl[number]->getMode() == Teplica::DECREASE_IN_HUMIDITY)
+    arr_Tepl[number]->decrease_in_humidity(AIRTIME, 0);
 
   arr_Tepl[number]->setHysteresis(slave.Hreg(wifi_hysteresis_4 + k));
   flash.putUInt(String("Hyster" + String(arr_Tepl[number]->getId())).c_str(), slave.Hreg(wifi_hysteresis_4 + k));

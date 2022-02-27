@@ -11,7 +11,7 @@ private:
     int32_t _temperatureIntegral, _temperatureIntegralUp, _temperatureIntegralDown;
     boolean flag_oldtemperature = true, _there_are_windows = true;
     float _k_opentimewindows;
-    unsigned long _time_air, _time_close_window;
+    unsigned long _time_air, _time_decrease_in_humidity, _time_close_window;
     const uint32_t _WAITING_ON_PUMP = 300000;
     MB11016P_ESP *__relay;
     Sensor *__sensor;
@@ -43,9 +43,10 @@ public:
     Window *__window;
     enum mode
     {
-        AUTO,
-        MANUAL,
-        AIR
+        AUTO,                // автоматический режим
+        MANUAL,              // ручной режим
+        AIR,                 // проветривание
+        DECREASE_IN_HUMIDITY // осушение
     };
     void regulationPump(int temperature)
     {
@@ -77,9 +78,9 @@ public:
                     __relay->setOff(_relayHeat);
             }
             //если теплица с окнами
-            if (getLevel() < 20)
+            if (getLevel() <= 10)
             {
-                //упраление основным нагревателем
+                //управление основным нагревателем
                 if (_setpump - temperature > _hysteresis >> 1)
                     if (millis() > _time_close_window)
                         __relay->setOn(_relayPump);
@@ -144,7 +145,7 @@ public:
             {
                 if (_oldtemperatute >= temperature) //
                 {
-                    if (__window->getlevel() > 20) //прикрытие  окон при достижении температуры уставки
+                    if (__window->getlevel() > 30) //прикрытие  окон при достижении температуры уставки
                     {
                         __window->closeWindow(getLevel() / 2); //
                     }
@@ -169,28 +170,41 @@ public:
     // режим проветривания
     void air(unsigned long airtime, int outdoortemperature)
     {
+        int Toutlevel = 25;
         if (!_there_are_windows)
         {
             __relay->setOn(_relayWind);
             __window->openWindow(100);
+        }
+        else if (__relay->getRelay(_relayUp) || __relay->getRelay(_relayDown))
             return;
-        }
-
-        int Toutlevel = constrain(map(outdoortemperature - _setpump, -1000, 1000, -5, 5), -10, 10);
-        Toutlevel += 25;
-        if (getLevel() < Toutlevel && !__relay->getRelay(_relayUp) && !__relay->getRelay(_relayDown))
-        {
+        else if (getLevel() < Toutlevel)
             __window->openWindow(Toutlevel - getLevel());
-            _time_air = millis() + airtime;
+        _time_air = millis() + airtime;
+    }
+
+    // режим осушения
+    void decrease_in_humidity(unsigned long heattime, int outdoortemperature)
+    {
+        __relay->setOn(_relayPump);
+        int Toutlevel = 25;
+        if (!_there_are_windows)
+        {
+            __relay->setOn(_relayWind);
+            __window->openWindow(100);
         }
+        else if (__relay->getRelay(_relayUp) || __relay->getRelay(_relayDown))
+            return;
+        else if (getLevel() < Toutlevel)
+            __window->openWindow(Toutlevel - getLevel());
+        _time_decrease_in_humidity = millis() + heattime;
     }
     void updateWorkWindows()
     {
-        if (!_there_are_windows)
-            return;
-
         __window->off();
         if (_mode == AIR && _time_air < millis())
+            _mode = AUTO;
+        if (_mode == DECREASE_IN_HUMIDITY && _time_decrease_in_humidity < millis())
             _mode = AUTO;
         alarm();
     }
@@ -199,8 +213,12 @@ public:
         if (!_there_are_windows)
         {
             if (1 == getSensorStatus())
+            {
                 if (getTemperature() < _setheat)
                     _mode = AUTO;
+                if (getTemperature() - _setwindow > 300)
+                    _mode = AUTO;
+            }
             return;
         }
         if (1 == getSensorStatus())
@@ -265,8 +283,10 @@ public:
     void setWindowlevel(int changelevel)
     {
         if (!_there_are_windows)
+        {
+            changelevel > 49 ? __relay->setOn(_relayWind) : __relay->setOff(_relayWind);
             return;
-
+        }
         changelevel -= __window->getlevel();
         if (changelevel > 0)
             __window->openWindow(changelevel);
@@ -293,14 +313,12 @@ public:
     {
         if (!_there_are_windows)
             return 100 * __relay->getRelay(_relayWind);
-
         return __window->getlevel();
     }
     int getOpenTimeWindow()
     {
         if (!_there_are_windows)
             return 0;
-
         return __window->getOpenTimeWindow();
     }
     int getHumidity()
@@ -327,14 +345,12 @@ public:
     {
         if (!_there_are_windows)
             return -1;
-
         return __window->getWindowDown();
     }
     int getWindowDown()
     {
         if (!_there_are_windows)
             return -1;
-
         return __window->getWindowDown();
     }
 
@@ -354,7 +370,6 @@ public:
     {
         if (!_there_are_windows)
             return;
-
         __window->setopentimewindow(time);
     }
     bool getThereAreWindows()

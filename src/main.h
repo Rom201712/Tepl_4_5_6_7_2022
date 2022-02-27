@@ -35,7 +35,7 @@ AsyncWebServer server(80);
 #define OFF LOW
 #define DEBUG_WIFI
 
-const String VER = "Ver - 4.5.0. Date - 29.01.22\r";
+const String VER = "Ver - 4.6.0. Date - 27.02.22\r";
 int IDSLAVE = 47; // адрес в сети Modbus
 
 // char* ssid = "yastrebovka";
@@ -49,7 +49,7 @@ const double RED = 55688;
 const double GREEN = 2016;
 const double BLUE = 1566;
 
-const double AIRTIME = 600000;
+const double AIRTIME = 900000; // длительность проветривания и осушения 
 const int RAIN1 = 300; // средний дождь
 const int RAIN2 = 500; // сильный дождь
 
@@ -196,7 +196,7 @@ enum
 
 int modbusdateWiFi[WiFi_HOLDING_REGS_SIZE];
 unsigned long timesendnextion, time_updateGreenHouse;
-const unsigned long TIME_UPDATE_GREENOOUSE = 300000;
+const unsigned long TIME_UPDATE_GREENOOUSE = 360000;
 const unsigned long TIME_UPDATE_MODBUS = 1000;
 long updateNextion;
 String pageNextion = "p0";
