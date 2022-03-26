@@ -10,7 +10,6 @@ private:
     int _hysteresis = 20, _counter = 0;
     int32_t _temperatureIntegral, _temperatureIntegralUp, _temperatureIntegralDown;
     boolean flag_oldtemperature = true, _there_are_windows = true;
-    float _k_opentimewindows;
     unsigned long _time_air, _time_decrease_in_humidity, _time_close_window;
     const uint32_t _WAITING_ON_PUMP = 300000;
     MB11016P_ESP *__relay;
@@ -18,11 +17,11 @@ private:
 
 public:
     // конструктор для SM_200 (датчик температуры) и MB110_16P (блок реле)
-    Teplica(int id, Sensor *SM200, int relayPump, int relayHeat, int relayUp, int relayDown, float k_opentimewindows,
+    Teplica(int id, Sensor *SM200, int relayPump, int relayHeat, int relayUp, int relayDown,
             int setpump, int setheat, int setwindow, int opentimewindows, MB11016P_ESP *mb11016p) : _mode(AUTO), _id(id), _setpump(setpump), _setheat(setheat),
                                                                                                     _setwindow(setwindow), _relayPump(relayPump),
-                                                                                                    _relayHeat(relayHeat), _relayUp(relayUp), _relayDown(relayDown),
-                                                                                                    _k_opentimewindows(k_opentimewindows)
+                                                                                                    _relayHeat(relayHeat), _relayUp(relayUp), _relayDown(relayDown)
+
     {
         __window = new Window(mb11016p, relayUp, relayDown, opentimewindows);
         __relay = mb11016p;
@@ -59,7 +58,7 @@ public:
                 {
                     __relay->setOn(_relayWind);
                 }
-                if (temperature < _setpump + 50)
+                if (temperature < _setwindow - 100)
                 {
                     __relay->setOff(_relayWind);
                 }
@@ -80,25 +79,25 @@ public:
             //если теплица с окнами
             if (getLevel() <= 10)
             {
-                //управление основным нагревателем
+                //управление включением нагревателей
                 if (_setpump - temperature > _hysteresis >> 1)
                     if (millis() > _time_close_window)
                         __relay->setOn(_relayPump);
                 //управление дополнительным нагревателем
                 if (_setheat - temperature > _hysteresis >> 1)
                     __relay->setOn(_relayHeat);
-                //управление основным нагревателем
-                if (temperature - _setpump > _hysteresis >> 1)
-                    __relay->setOff(_relayPump);
-                //управление дополнительным нагревателем
-                if (temperature - _setpump > -50)
-                    __relay->setOff(_relayHeat);
             }
+            //управление выключением нагревателей
+            if (temperature - _setpump > _hysteresis >> 1)
+                __relay->setOff(_relayPump);
+            //управление дополнительным нагревателем
+            if (temperature - _setpump > -50)
+                __relay->setOff(_relayHeat);
         }
-        else if (getMode() == MANUAL && !_there_are_windows)
-        {
-            __relay->setOff(_relayWind);
-        }
+        // else if (getMode() == MANUAL && !_there_are_windows)
+        // {
+        //     __relay->setOff(_relayWind);
+        // }
     }
     //управление окнами
     void regulationWindow(int temperature, int outdoortemperature)
@@ -158,12 +157,12 @@ public:
                 }
             }
         }
-        // Serial.printf("Tepl %d, temper: %d\n", getAdressT(), temperature);
-        // Serial.printf("Tepl %d, oldtemper: %d\n", getAdressT(), _oldtemperatute);
-        // Serial.printf("Tepl %d, temperSet: %d\n", getAdressT(), _setpoint + _deltaSetpointWindow);
-        // Serial.printf("Tepl %d, integral: %d\n", getAdressT(), _temperatureIntegral);
-        // Serial.printf("Tepl %d, coun: %d\n", getAdressT(), _counter);
-        // Serial.printf("Tepl %d, changelevel: %d\n\n", getAdressT(), constrain(map(_counter, 1, 16, 12, 5), 5, 15) + Tout);
+        Serial.printf("Tepl %d, temper: %d\n", getAdressT(), temperature);
+        Serial.printf("Tepl %d, oldtemper: %d\n", getAdressT(), _oldtemperatute);
+        Serial.printf("Tepl %d, temperSet: %d\n", getAdressT(), _setwindow);
+        Serial.printf("Tepl %d, integral: %d\n", getAdressT(), _temperatureIntegral);
+        Serial.printf("Tepl %d, coun: %d\n", getAdressT(), _counter);
+        Serial.printf("Tepl %d, level: %d\n\n", getAdressT(), getLevel());
         _oldtemperatute = temperature;
     }
 

@@ -8,12 +8,11 @@ private:
     unsigned long _timeclose; // время выключения закрытия окон
     int _level = 0;           // уровень открытия
     int _opentimewindow;      // полное время  работы механизма, сек
-    int _newopentimewindow;   // новое полное время  работы механизма, сек
     int _relayUp, _relayDown;
     MB11016P_ESP *__relay;
 
 public:
-    Window(MB11016P_ESP *mb11016p, int relayUp, int relayDown, int opentimewindow) : _opentimewindow(opentimewindow), _newopentimewindow(opentimewindow), _relayUp(relayUp), _relayDown(relayDown)
+    Window(MB11016P_ESP *mb11016p, int relayUp, int relayDown, int opentimewindow) : _opentimewindow(opentimewindow),  _relayUp(relayUp), _relayDown(relayDown)
     {
         __relay = mb11016p;
     }
@@ -25,11 +24,8 @@ public:
     //изменение времени работы механизма
     void setopentimewindow(int opentimewindow)
     {
-
-        if (0 == _level)
+        if (0 == _level && !getWindowDown())
             _opentimewindow = opentimewindow;
-        else
-            _newopentimewindow = opentimewindow;
     }
 
     int getWindowUp()
@@ -50,8 +46,6 @@ public:
     //включение механизма открытия окна
     void openWindow(int changelevel)
     {
-        if (0 == _level)
-            _opentimewindow = _newopentimewindow;
         // if (changelevel)
         if (changelevel + _level > 100)
             changelevel = 100 - _level;

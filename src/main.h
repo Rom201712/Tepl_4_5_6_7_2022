@@ -219,9 +219,9 @@ Sensor Tepl4Temperature = Sensor(4, 0, 0);
 Sensor Tepl5Temperature = Sensor(5, 0, 0);
 Sensor Tepl6Temperature = Sensor(6, 0, 0);
 Sensor Tepl7Temperature = Sensor(7, 0, 0);
-Teplica Tepl4 = Teplica(4, &Tepl4Temperature, 0, 1, 2, 3, 1, 30, 20, 40, 60, &mb11016p);
-Teplica Tepl5 = Teplica(5, &Tepl5Temperature, 4, 5, 6, 7, 1, 30, 20, 40, 60, &mb11016p);
-Teplica Tepl6 = Teplica(6, &Tepl6Temperature, 8, 9, 10, 11, 1, 30, 20, 40, 60, &mb11016p);
+Teplica Tepl4 = Teplica(4, &Tepl4Temperature, 0, 1, 2, 3, 30, 20, 40, 60, &mb11016p);
+Teplica Tepl5 = Teplica(5, &Tepl5Temperature, 4, 5, 6, 7, 30, 20, 40, 60, &mb11016p);
+Teplica Tepl6 = Teplica(6, &Tepl6Temperature, 8, 9, 10, 11, 30, 20, 40, 60, &mb11016p);
 // Teplica Tepl7 = Teplica(7, &Tepl7Temperature, 12, 13, 14, 15, 1, 30, 20, 40,  60, &mb11016p);
 Teplica Tepl7 = Teplica(7, &Tepl7Temperature, 12, 13, 14, 30, 20, 40, &mb11016p); // теплица без окон
 

@@ -669,7 +669,7 @@ void updateGreenHouse(void *pvParameters)
   {
     if (millis() > 100000)
     {
-      if (!Rain.getAdress() || Rain.getRaiLevel() < RAIN2) //  если идет сильный дождь не трогаем окна
+      if (!Rain.getAdress() || (Rain.getRaiLevel() != 0xffff && Rain.getRaiLevel() < RAIN2)) //  если идет сильный дождь не трогаем окна
       {
         int t_out_door = 0;
         if (OutDoorTemperature.getAdress())
