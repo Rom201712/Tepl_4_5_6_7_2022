@@ -35,7 +35,7 @@ AsyncWebServer server(80);
 #define OFF LOW
 #define DEBUG_WIFI
 
-const String VER = "Ver - 4.6.1. Date - 26.03.22\r";
+const String VER = "Ver - 4.6.2. Date - 26.03.22\r";
 int IDSLAVE = 47; // адрес в сети Modbus
 
 // char* ssid = "yastrebovka";
