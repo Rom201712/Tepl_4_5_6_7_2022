@@ -17,7 +17,7 @@ public:
         __relay = mb11016p;
     }
 
-    int getlevel()
+    int getlevel() const
     {
         return _level;
     }
@@ -28,17 +28,17 @@ public:
             _opentimewindow = opentimewindow;
     }
 
-    int getWindowUp()
+    int getWindowUp() const
     {
         return __relay->getRelay(_relayUp);
     }
 
-    int getWindowDown()
+    int getWindowDown() const
     {
         return __relay->getRelay(_relayDown);
     }
 
-    int getOpenTimeWindow()
+    int getOpenTimeWindow() const
     {
         return _opentimewindow;
     }
@@ -46,10 +46,8 @@ public:
     //включение механизма открытия окна
     void openWindow(int changelevel)
     {
-        // if (changelevel)
         if (changelevel + _level > 100)
             changelevel = 100 - _level;
-        // if (changelevel)
         if (__relay->getRelay(_relayUp) == 0 && __relay->getRelay(_relayDown) == 0)
         {
             __relay->setOn(_relayUp);
@@ -60,7 +58,6 @@ public:
     //включение механизма закрытия окна
     void closeWindow(int changelevel)
     {
-        // if (changelevel)
         if (__relay->getRelay(_relayUp) == 0 && __relay->getRelay(_relayDown) == 0)
         {
             __relay->setOn(_relayDown);
@@ -70,22 +67,18 @@ public:
     }
 
     //выключение механизма открытия и закрытия
-    void off()
+    void off() const
     {
         if (_timeopen < millis())
-        {
             __relay->setOff(_relayUp);
-        }
         if (_timeclose < millis())
-        {
             __relay->setOff(_relayDown);
-        }
     }
-    unsigned long getOpenTime()
+    unsigned long getOpenTime() const
     {
         return _timeopen;
     }
-    unsigned long getCloseTime()
+    unsigned long getCloseTime() const
     {
         return _timeclose;
     }

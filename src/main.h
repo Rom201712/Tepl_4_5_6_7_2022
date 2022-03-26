@@ -38,10 +38,10 @@ AsyncWebServer server(80);
 const String VER = "Ver - 4.6.1. Date - 26.03.22\r";
 int IDSLAVE = 47; // адрес в сети Modbus
 
-char* ssid = "yastrebovka";
-char* password =  "zerNo32_";
-//char *ssid = "Home-RP";
-//char *password = "12rp1974";
+// char* ssid = "yastrebovka";
+// char* password =  "zerNo32_";
+char *ssid = "Home-RP";
+char *password = "12rp1974";
 
 //цвет на экране
 const double LIGHT = 57048;
