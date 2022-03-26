@@ -47,7 +47,7 @@ public:
         AIR,                 // проветривание
         DECREASE_IN_HUMIDITY // осушение
     };
-    void regulationPump(int temperature)
+    void regulationPump(int temperature) const
     {
         if (getMode() == AUTO)
         {
@@ -100,7 +100,7 @@ public:
         // }
     }
     //управление окнами
-    void regulationWindow(int temperature, int outdoortemperature)
+    void regulationWindow(int temperature, int outdoortemperature) 
     {
         if (_temperatureIntegral < 0 && temperature > _setwindow)
             _temperatureIntegral = 0;
@@ -252,15 +252,15 @@ public:
         _setwindow = setpoint;
         _oldtemperatute = getTemperature();
     }
-    int getSetPump()
+    int getSetPump() const
     {
         return _setpump;
     }
-    int getSetHeat()
+    int getSetHeat() const
     {
         return _setheat;
     }
-    int getSetWindow()
+    int getSetWindow() const
     {
         return _setwindow;
     }
@@ -270,16 +270,16 @@ public:
     {
         _hysteresis = hysteresis;
     }
-    int getHysteresis()
+    int getHysteresis() const
     {
         return _hysteresis;
     }
-    int getAdressT()
+    int getAdressT() const
     {
         return __sensor->getAdress();
     }
     //установка уровня окон
-    void setWindowlevel(int changelevel)
+    void setWindowlevel(int changelevel) const
     {
         if (!_there_are_windows)
         {
@@ -296,11 +296,11 @@ public:
     {
         _mode = mode;
     }
-    int getMode()
+    int getMode() const
     {
         return _mode;
     }
-    int getTemperature()
+    int getTemperature() const
     {
         return __sensor->getTemperature();
     }
@@ -308,27 +308,27 @@ public:
     {
         return __sensor->getStatus();
     }
-    int getLevel()
+    int getLevel() const
     {
         if (!_there_are_windows)
             return 100 * __relay->getRelay(_relayWind);
         return __window->getlevel();
     }
-    int getOpenTimeWindow()
+    int getOpenTimeWindow() const
     {
         if (!_there_are_windows)
             return 0;
         return __window->getOpenTimeWindow();
     }
-    int getHumidity()
+    int getHumidity() const
     {
         return __sensor->getHumidity();
     }
-    int getPump()
+    int getPump() const
     {
         return __relay->getRelay(_relayPump);
     }
-    void setPump(int vol)
+    void setPump(int vol) const
     {
         vol ? __relay->setOn(_relayPump) : __relay->setOff(_relayPump);
     }
