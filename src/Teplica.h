@@ -18,10 +18,10 @@ private:
 public:
     // конструктор для SM_200 (датчик температуры) и MB110_16P (блок реле)
     Teplica(int id, Sensor *SM200, int relayPump, int relayHeat, int relayUp, int relayDown,
-            int setpump, int setheat, int setwindow, int opentimewindows, MB11016P_ESP *mb11016p) : _mode(AUTO), _id(id), _setpump(setpump), _setheat(setheat),
-                                                                                                    _setwindow(setwindow), _relayPump(relayPump),
-                                                                                                    _relayHeat(relayHeat), _relayUp(relayUp), _relayDown(relayDown)
-
+            int setpump, int setheat, int setwindow, int opentimewindows, MB11016P_ESP *mb11016p) : 
+            _mode(AUTO), _id(id), _setpump(setpump), _setheat(setheat),
+            _setwindow(setwindow), _relayPump(relayPump),
+            _relayHeat(relayHeat), _relayUp(relayUp), _relayDown(relayDown)
     {
         __window = new Window(mb11016p, relayUp, relayDown, opentimewindows);
         __relay = mb11016p;
@@ -65,16 +65,24 @@ public:
                 //упраление основным нагревателем
                 if (_setpump - temperature > _hysteresis >> 1)
                     if (millis() > _time_close_window)
+                    {
                         __relay->setOn(_relayPump);
+                    }
                 //управление дополнительным нагревателем
                 if (_setheat - temperature > _hysteresis >> 1)
+                {
                     __relay->setOn(_relayHeat);
+                }
                 //управление основным нагревателем
                 if (temperature - _setpump > _hysteresis >> 1)
+                {
                     __relay->setOff(_relayPump);
+                }
                 //управление дополнительным нагревателем
                 if (temperature - _setpump > -50)
+                {
                     __relay->setOff(_relayHeat);
+                }
             }
             //если теплица с окнами
             if (getLevel() <= 10)
@@ -82,17 +90,25 @@ public:
                 //управление включением нагревателей
                 if (_setpump - temperature > _hysteresis >> 1)
                     if (millis() > _time_close_window)
+                    {
                         __relay->setOn(_relayPump);
+                    }
                 //управление дополнительным нагревателем
                 if (_setheat - temperature > _hysteresis >> 1)
+                {
                     __relay->setOn(_relayHeat);
+                }
             }
             //управление выключением нагревателей
             if (temperature - _setpump > _hysteresis >> 1)
+            {
                 __relay->setOff(_relayPump);
+            }
             //управление дополнительным нагревателем
             if (temperature - _setpump > -50)
+            {
                 __relay->setOff(_relayHeat);
+            }
         }
         // else if (getMode() == MANUAL && !_there_are_windows)
         // {
@@ -100,12 +116,16 @@ public:
         // }
     }
     //управление окнами
-    void regulationWindow(int temperature, int outdoortemperature) 
+    void regulationWindow(int temperature, int outdoortemperature)
     {
         if (_temperatureIntegral < 0 && temperature > _setwindow)
+        {
             _temperatureIntegral = 0;
+        }
         if (_temperatureIntegral > 0 && temperature < _setwindow)
+        {
             _temperatureIntegral = 0;
+        }
         if (getMode() == AUTO)
         {
             int Tout = 0;
@@ -178,7 +198,9 @@ public:
         else if (__relay->getRelay(_relayUp) || __relay->getRelay(_relayDown))
             return;
         else if (getLevel() < Toutlevel)
+        {
             __window->openWindow(Toutlevel - getLevel());
+        }
         _time_air = millis() + airtime;
     }
 
@@ -202,9 +224,13 @@ public:
     {
         __window->off();
         if (_mode == AIR && _time_air < millis())
+        {
             _mode = AUTO;
+        }
         if (_mode == DECREASE_IN_HUMIDITY && _time_decrease_in_humidity < millis())
+        {
             _mode = AUTO;
+        }
         alarm();
     }
     void alarm()
@@ -227,7 +253,7 @@ public:
                 if (__window->getlevel())
                     __window->closeWindow(getLevel() + 5);
                 else
-                    __relay->setOn(_relayPump); // Добавлено в Ver - 4.3.0.
+                    __relay->setOn(_relayPump);
             }
     }
 

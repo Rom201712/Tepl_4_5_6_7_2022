@@ -1,10 +1,7 @@
 #include <WiFi.h>
-//#include <FS.h>
-//#include <SPIFFS.h>
 #include "Preferences.h"
 #include "SoftwareSerial.h"
 #include <ESP32Ticker.h>
-//// #include <Arduino.h>
 #include <Bounce2.h>
 #include <ModbusRTU.h>
 #include <ModbusIP_ESP8266.h>
@@ -17,6 +14,7 @@
 #include <AsyncElegantOTA.h>
 
 // #define USE_WEB_SERIAL
+#define DEBUG_WIFI
 
 #ifdef USE_WEB_SERIAL // использование web сервера для отладки
 #include <WebSerial.h>
@@ -33,15 +31,14 @@ AsyncWebServer server(80);
 #define TXDMASTER 33
 #define ON HIGH
 #define OFF LOW
-#define DEBUG_WIFI
 
-const String VER = "Ver - 4.6.2. Date - 26.03.22\r";
+const String VER = "Ver - 4.7.2. Date - "  + String(__DATE__) + "\r";
 int IDSLAVE = 47; // адрес в сети Modbus
 
-// char* ssid = "yastrebovka";
-// char* password =  "zerNo32_";
-char *ssid = "Home-RP";
-char *password = "12rp1974";
+ char* ssid = "yastrebovka";
+ char* password =  "zerNo32_";
+// char *ssid = "Home-RP";
+// char *password = "12rp1974";
 
 //цвет на экране
 const double LIGHT = 57048;
@@ -50,8 +47,8 @@ const double GREEN = 2016;
 const double BLUE = 1566;
 
 const double AIRTIME = 900000; // длительность проветривания и осушения 
-const int RAIN1 = 300; // средний дождь
-const int RAIN2 = 500; // сильный дождь
+const int RAIN_MIN = 300; // средний дождь
+const int RAIN_MAX = 500; // сильный дождь
 
 SoftwareSerial SerialNextion;
 Ticker tickerWiFiConnect;
@@ -222,8 +219,8 @@ Sensor Tepl7Temperature = Sensor(7, 0, 0);
 Teplica Tepl4 = Teplica(4, &Tepl4Temperature, 0, 1, 2, 3, 30, 20, 40, 60, &mb11016p);
 Teplica Tepl5 = Teplica(5, &Tepl5Temperature, 4, 5, 6, 7, 30, 20, 40, 60, &mb11016p);
 Teplica Tepl6 = Teplica(6, &Tepl6Temperature, 8, 9, 10, 11, 30, 20, 40, 60, &mb11016p);
-// Teplica Tepl7 = Teplica(7, &Tepl7Temperature, 12, 13, 14, 15, 1, 30, 20, 40,  60, &mb11016p);
-Teplica Tepl7 = Teplica(7, &Tepl7Temperature, 12, 13, 14, 30, 20, 40, &mb11016p); // теплица без окон
+Teplica Tepl7 = Teplica(7, &Tepl7Temperature, 12, 13, 14, 15, 30, 20, 40,  60, &mb11016p);
+//Teplica Tepl7 = Teplica(7, &Tepl7Temperature, 12, 13, 14, 30, 20, 40, &mb11016p); // теплица без окон
 
 Sensor *sensor_SM200[5];
 Teplica *arr_Tepl[4];
@@ -275,7 +272,7 @@ void updateDateSensor(void *pvParameters);
 
 bool cbRead(Modbus::ResultCode event, uint16_t transactionId, void *data)
 {
-  // Serial.printf("result:\t0x%02X\n", event);
+  Serial.printf("result:\t0x%02X\n", event);
   sensor[SensorSM200::mberror] = event;
   return true;
 }

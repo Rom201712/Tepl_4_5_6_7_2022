@@ -186,7 +186,7 @@ void loop()
     if (1 == t->getSensorStatus())
       t->regulationPump(t->getTemperature());
 
-    if (Rain.getAdress() && Rain.getRaiLevel() > RAIN2 && Rain.getRaiLevel() < 0x400) //  если идет сильный дождь - закрываем окна
+    if ((Rain.getAdress() && Rain.getRaiLevel() <0x400) && Rain.getRaiLevel() > RAIN_MAX) //  если идет сильный дождь - закрываем окна
     {
       if (t->getLevel() > 50)
         t->setWindowlevel(40);
@@ -325,11 +325,11 @@ int indiRain()
 {
   if (Rain.getAdress())
   {
-    if (Rain.getRaiLevel() < RAIN1)
+    if (Rain.getRaiLevel() < RAIN_MIN)
     {
       return 1; // солнце
     }
-    else if (Rain.getRaiLevel() < RAIN2)
+    else if (Rain.getRaiLevel() < RAIN_MAX)
     {
       return 2; // влажно
     }
@@ -615,15 +615,12 @@ void updateDateSensor(void *pvParameters)
     case 5:
       if (Rain.getAdress())
       {
-        // Serial1.updateBaudRate(9600);
-        mb_master.readHreg(Rain.getAdress(), 0, sensor, 1, cbRead);
+        mb_master.readIreg(Rain.getAdress(), 0, sensor, 1, cbRead);
         update_mbmaster();
         if (!sensor[SensorSM200::mberror])
           Rain.setRain(sensor[0]);
         else
           Rain.setRain(0xffff);
-        // Serial1.updateBaudRate(flash.getInt("mspeed", 2400));
-        // Serial.println(sensor[0]);
       }
       break;
     default:
@@ -669,7 +666,7 @@ void updateGreenHouse(void *pvParameters)
   {
     if (millis() > 100000)
     {
-      if (!Rain.getAdress() || (Rain.getRaiLevel() != 0xffff && Rain.getRaiLevel() < RAIN2)) //  если идет сильный дождь не трогаем окна
+      if (!Rain.getAdress() || Rain.getRaiLevel() < RAIN_MAX) //  если не идет сильный дождь - регулируем  окна
       {
         int t_out_door = 0;
         if (OutDoorTemperature.getAdress())
@@ -818,19 +815,19 @@ void analyseString(String incStr)
       pars_str_adr(incStr);
       flash.putString("adr", incStr);
     }
-    if (incStr.substring(i).startsWith("ss")) // изменение скорости шины связи с терминалом
+    if (incStr.substring(i).startsWith("ss")) // изменение скорости шины связи с датчиками температуры
     {
       uint16_t temp = uint16_t(incStr.substring(i + 2, i + 7).toInt());
       flash.putInt("sspeed", temp);
       Serial2.end();
-      Serial2.begin(temp); // Modbus Slave
+      Serial2.begin(temp); // Modbus Master
     }
-    if (incStr.substring(i).startsWith("ms")) // изменение скорости шины связи с датчиками температуры
+    if (incStr.substring(i).startsWith("ms")) // изменение скорости шины связи с терминалом
     {
       uint16_t temp = uint16_t(incStr.substring(i + 2, i + 7).toInt());
       flash.putInt("mspeed", temp);
       Serial1.end();
-      Serial1.begin(flash.getInt("mspeed", 2400), SERIAL_8N1, RXDMASTER, TXDMASTER, false); // Modbus Master
+      Serial1.begin(temp, SERIAL_8N1, RXDMASTER, TXDMASTER, false); // Modbus Slave
     }
     if (incStr.substring(i).startsWith("wvol")) //
     {
