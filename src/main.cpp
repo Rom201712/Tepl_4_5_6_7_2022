@@ -28,7 +28,7 @@ void setup()
     }
   }
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(200, "text/plain", "Greenhaus #4, #5, #6 and #7.\n" + VER + calculateTimeWork() + "\nRSSI: " + String(WiFi.RSSI()) + " db\nRain: " + String(Rain.getRaiLevel())); });
+            { request->send(200, "text/plain", "Greenhaus #4, #5, #6 and #7.\n" + VER + calculateTimeWork() + "\nRSSI: " + String(WiFi.RSSI()) + " db\nRain: " + String(OutDoor.getRaiLevel())); });
 
   AsyncElegantOTA.begin(&server); // Start ElegantOTA
   server.begin();
@@ -117,7 +117,7 @@ void setup()
   sensor_SM200[1] = &Tepl5Temperature;
   sensor_SM200[2] = &Tepl6Temperature;
   sensor_SM200[3] = &Tepl7Temperature;
-  sensor_SM200[4] = &OutDoorTemperature;
+  // sensor_SM200[4] = &OutDoorTemperature;
   arr_Tepl[0] = &Tepl4;
   arr_Tepl[1] = &Tepl5;
   arr_Tepl[2] = &Tepl6;
@@ -185,12 +185,12 @@ void loop()
     t->updateWorkWindows();
     if (1 == t->getSensorStatus())
       t->regulationPump(t->getTemperature());
-
-    if ((Rain.getAdress() && Rain.getRaiLevel() <0x400) && Rain.getRaiLevel() > RAIN_MAX) //  если идет сильный дождь - закрываем окна
-    {
-      if (t->getLevel() > 50)
-        t->setWindowlevel(40);
-    }
+    if (OutDoor.getAdress())                                                 //  если есть датчик дождя
+      if (OutDoor.getRaiLevel() > RAIN_MAX && OutDoor.getRaiLevel() < 0x400) //  если идет сильный дождь - закрываем окна до 40%
+      {
+        if (t->getLevel() > 50)
+          t->setWindowlevel(40);
+      }
   }
   if (SerialNextion.available())
     readNextion();
@@ -215,7 +215,7 @@ void loop()
 }
 void pageNextion_p0()
 {
-  coun1 = 0;
+  counSendtoNextion = 0;
   // вывод данных теплицы 4
   indiTepl4();
   // вывод данных теплицы 5
@@ -250,7 +250,7 @@ void pageNextion_p0()
 void pageNextion_p1(int i)
 {
   sendNextion("g0.txt", "\nRSSI: " + String(WiFi.RSSI()) + " | " + WiFi.localIP().toString());
-  if (coun1 < 3)
+  if (counSendtoNextion < 3)
   {
     sendNextion("x0.val", arr_Tepl[i]->getSetPump() / 10);
     sendNextion("x4.val", arr_Tepl[i]->getSetHeat() / 10);
@@ -261,10 +261,10 @@ void pageNextion_p1(int i)
     sendNextion("h2.val", arr_Tepl[i]->getOpenTimeWindow());
     sendNextion("n0.val", arr_Tepl[i]->getLevel());
     sendNextion("h0.val", arr_Tepl[i]->getLevel());
-    coun1++;
+    counSendtoNextion++;
   }
   arr_Tepl[i]->getPump() ? sendNextion("b3.picc", 2) : sendNextion("b3.picc", 1);
-  arr_Tepl[i]->getHeat() ? sendNextion("b2.picc", 2) : sendNextion("b2.picc", 1);
+  // arr_Tepl[i]->getHeat() ? sendNextion("b2.picc", 2) : sendNextion("b2.picc", 1);
   switch (arr_Tepl[i]->getMode())
   {
   case Teplica::MANUAL:
@@ -281,19 +281,19 @@ void pageNextion_p1(int i)
     break;
   case Teplica::DECREASE_IN_HUMIDITY:
     sendNextion("b2.picc", 2);
-    break;  
+    break;
   default:
     break;
   }
 }
 void pageNextion_p2()
 {
-  if (coun1 < 3)
+  if (counSendtoNextion < 3)
   {
     String incStr = flash.getString("adr", "");
     pars_str_adr(incStr);
   }
-  coun1++;
+  counSendtoNextion++;
   switch (flash.getInt("sspeed", 2400))
   {
   case 2400:
@@ -323,45 +323,47 @@ void pageNextion_p2()
 // вывод данных датчика дождя
 int indiRain()
 {
-  if (Rain.getAdress())
+  if (OutDoor.getAdress() == 0)
+    return 0;
+  if (OutDoor.getStatus() == SensorRain::NO_ERROR)
   {
-    if (Rain.getRaiLevel() < RAIN_MIN)
+    if (OutDoor.getAdress())
     {
-      return 1; // солнце
-    }
-    else if (Rain.getRaiLevel() < RAIN_MAX)
-    {
-      return 2; // влажно
-    }
-    else if (Rain.getRaiLevel() < 0x400)
-    {
-      return 3; // сильный дождь
-    }
-    else if (Rain.getRaiLevel() == 0xffff)
-    {
-      return 0xffff; // ошибка датчика
+      if (OutDoor.getRaiLevel() < RAIN_MIN)
+      {
+        return 1; // солнце
+      }
+      else if (OutDoor.getRaiLevel() < RAIN_MAX)
+      {
+        return 2; // влажно
+      }
+      else if (OutDoor.getRaiLevel() < 0x400)
+      {
+        return 3; // сильный дождь
+      }
     }
   }
   else
-    return 0; //  датчик не установлен
+    return 8; //  ошибка
 }
 
 // вывод температура на улице
 void indiOutDoor()
 {
-  if (OutDoorTemperature.getAdress())
+  if (OutDoor.getAdress())
   {
-    if (1 == OutDoorTemperature.getStatus())
+    if (SensorRain::NO_ERROR == OutDoor.getStatus() && OutDoor.getTemperature() != -12700)
     {
-      sendNextion("page0.t1.txt", String(OutDoorTemperature.getTemperature() / 100.0, 1));
-      sendNextion("page0.t2.txt", String(OutDoorTemperature.getHumidity() / 100.0, 1));
+      sendNextion("page0.t1.txt", String(OutDoor.getTemperature() / 100.0, 1));
+      // sendNextion("page0.t2.txt", String(OutDoorTemperature.getHumidity() / 100.0, 1));
+      sendNextion("");
     }
     else
     {
-      sendNextion("page0.t1.txt", String(OutDoorTemperature.getStatus(), HEX));
+      sendNextion("page0.t1.txt", String(0xE4, HEX));
       sendNextion("page0.t1.pco", LIGHT);
-      sendNextion("page0.t2.txt", "---");
-      sendNextion("page0.t2.pco", LIGHT);
+      // sendNextion("page0.t2.txt", "---");
+      // sendNextion("page0.t2.pco", LIGHT);
     }
   }
   else
@@ -374,9 +376,9 @@ void indiOutDoor()
 // вывод данных теплицы 4
 void indiTepl4()
 {
- if (Tepl4Temperature.getAdress())
+  if (Tepl4Temperature.getAdress())
   { //ввывод температуры и ошибок датчика температуры
-    if (1 == Tepl4.getSensorStatus())
+    if (Sensor::NO_ERROR == Tepl4.getSensorStatus())
     {
       sendNextion("page0.t0.font", 5);
       sendNextion("page0.t0.txt", String(Tepl4.getTemperature() / 100.0, 1));
@@ -428,7 +430,7 @@ void indiTepl5()
 {
   if (Tepl4Temperature.getAdress())
   { //ввывод температуры и ошибок датчика температуры
-    if (1 == Tepl5.getSensorStatus())
+    if (Sensor::NO_ERROR == Tepl5.getSensorStatus())
     {
       sendNextion("t7.font", 5);
       sendNextion("t7.txt", String(Tepl5.getTemperature() / 100.0, 1));
@@ -465,10 +467,10 @@ void indiTepl5()
     sendNextion("page0.t4.txt", "M");
   if (Tepl5.getMode() == Teplica::AUTO)
     sendNextion("page0.t4.txt", "A");
-    else if (Tepl5.getMode() == Teplica::AIR)
+  else if (Tepl5.getMode() == Teplica::AIR)
     sendNextion("page0.t4.txt", "W");
-   else if (Tepl5.getMode() == Teplica::DECREASE_IN_HUMIDITY)
-    sendNextion("page0.t4.txt", "H");  
+  else if (Tepl5.getMode() == Teplica::DECREASE_IN_HUMIDITY)
+    sendNextion("page0.t4.txt", "H");
   //идикация состояния насоса
   Tepl5.getPump() ? sendNextion("p3.pic", 10) : sendNextion("p3.pic", 9);
   //идикация состояния дополнительного обогревателя
@@ -480,7 +482,7 @@ void indiTepl6()
 {
   if (Tepl6Temperature.getAdress())
   { //ввывод температуры и ошибок датчика температуры
-    if (1 == Tepl6.getSensorStatus())
+    if (Sensor::NO_ERROR == Tepl6.getSensorStatus())
     {
       sendNextion("t8.font", 5);
       sendNextion("t8.txt", String(Tepl6.getTemperature() / 100.0, 1));
@@ -517,10 +519,10 @@ void indiTepl6()
     sendNextion("page0.t5.txt", "M");
   if (Tepl6.getMode() == Teplica::AUTO)
     sendNextion("page0.t5.txt", "A");
-    else if (Tepl6.getMode() == Teplica::AIR)
+  else if (Tepl6.getMode() == Teplica::AIR)
     sendNextion("page0.t5.txt", "W");
-     else if (Tepl6.getMode() == Teplica::DECREASE_IN_HUMIDITY)
-     sendNextion("page0.t5.txt", "H");
+  else if (Tepl6.getMode() == Teplica::DECREASE_IN_HUMIDITY)
+    sendNextion("page0.t5.txt", "H");
   //идикация состояния насоса
   Tepl6.getPump() ? sendNextion("p5.pic", 10) : sendNextion("p5.pic", 9);
   //идикация состояния дополнительного обогревателя
@@ -532,7 +534,7 @@ void indiTepl7()
 {
   if (Tepl7Temperature.getAdress())
   { //ввывод температуры и ошибок датчика температуры
-    if (1 == Tepl7.getSensorStatus())
+    if (Sensor::NO_ERROR == Tepl7.getSensorStatus())
     {
       sendNextion("t9.font", 5);
       sendNextion("t9.txt", String(Tepl7.getTemperature() / 100.0, 1));
@@ -562,16 +564,16 @@ void indiTepl7()
   sendNextion("x16.val", Tepl7.getSetHeat() / 10);
   //вывод уставки окно
   sendNextion("x17.val", Tepl7.getSetWindow() / 10);
-  //вывод уровня открытия окна  
+  //вывод уровня открытия окна
   sendNextion("page0.h3.val", Tepl7.getLevel());
   //вывод режима работы
   if (Tepl7.getMode() == Teplica::MANUAL)
     sendNextion("page0.t6.txt", "M");
   if (Tepl7.getMode() == Teplica::AUTO)
     sendNextion("page0.t6.txt", "A");
-    else if (Tepl7.getMode() == Teplica::AIR)
+  else if (Tepl7.getMode() == Teplica::AIR)
     sendNextion("page0.t6.txt", "W");
-     else if (Tepl7.getMode() == Teplica::DECREASE_IN_HUMIDITY)
+  else if (Tepl7.getMode() == Teplica::DECREASE_IN_HUMIDITY)
     sendNextion("page0.t6.txt", "H");
   //идикация состояния насоса
   Tepl7.getPump() ? sendNextion("p7.pic", 10) : sendNextion("p7.pic", 9);
@@ -587,10 +589,11 @@ void readNextion()
   while (SerialNextion.available())
   {
     inc = SerialNextion.read();
-    // Serial.print(inc);
     incStr += inc;
     if (inc == 0x23)
+    {
       incStr = "";
+    }
     if (inc == '\n')
     {
       if (incStr != "" || incStr.length() > 2)
@@ -609,53 +612,73 @@ void updateDateSensor(void *pvParameters)
   for (;;)
   {
     mb11016p.write();
+    delay(10);
     update_mbmaster();
-    switch (counterMBRead)
+
+    // опрос китайского датчика наружного воздуха
+    // if (OutDoorTemperature.getAdress())
+    // {
+    //   mb_master.readHreg(OutDoorTemperature.getAdress(), 0, sensor, SensorSM1911::SensorSM1911Data::size - 1, cbRead);
+    //   update_mbmaster();
+    //   if (!sensor[SensorSM200::mberror])
+    //   {
+    //     OutDoorTemperature.setTemperature(static_cast<int>(sensor[SensorSM1911::SensorSM1911Data::temperature]));
+    //     OutDoorTemperature.setHumidity(sensor[SensorSM1911::SensorSM1911Data::humidity]);
+    //     OutDoorTemperature.setStatus(SensorSM1911::NO_ERROR);
+    //   }
+    //   else
+    //   {
+    //     OutDoorTemperature.setStatus(sensor[SensorSM200::mberror]);
+    //   }
+    // }
+    // опрос датчиков теплиц
+    if (counterMBRead == TIME_UPDATE_MODBUS_SENSOR || 0 == counterMBRead)
     {
-    case 5:
-      if (Rain.getAdress())
+      // опрос датчика улицы
+      if (OutDoor.getAdress())
       {
-        mb_master.readIreg(Rain.getAdress(), 0, sensor, 1, cbRead);
+        mb_master.readIreg(OutDoor.getAdress(), 0, sensor, SensorRain::SensorRainData::size, cbRead);
         update_mbmaster();
         if (!sensor[SensorSM200::mberror])
-          Rain.setRain(sensor[0]);
+        {
+          OutDoor.setRain(sensor[SensorRain::SensorRainData::level]);
+          OutDoor.setTemperature(sensor[SensorRain::SensorRainData::temperature]);
+          OutDoor.setStatus(SensorRain::NO_ERROR);
+        }
         else
-          Rain.setRain(0xffff);
+        {
+          OutDoor.setStatus(SensorRain::ERROR);
+        }
       }
-      break;
-    default:
-      if (OutDoorTemperature.getAdress() && counterMBRead == 4)
+
+      for (Sensor *sensorSM200 : sensor_SM200)
       {
-        // получение данных от датчика температуры и влажности на улице
-        if (sensor_SM200[counterMBRead]->getAdress())
-          mb_master.readIreg(sensor_SM200[counterMBRead]->getAdress(), 30000, sensor, SensorSM200::SIZE, cbRead);
-      }
-      else
-      {
-        if (sensor_SM200[counterMBRead]->getAdress())
-          mb_master.readIreg(sensor_SM200[counterMBRead]->getAdress(), 30000, sensor, SensorSM200::SIZE, cbRead);
-      }
-      if (sensor_SM200[counterMBRead]->getAdress())
-      {
-        update_mbmaster();
-        if (!sensor[SensorSM200::mberror])
-          switch (sensor[SensorSM200::err])
+        if (sensorSM200->getAdress())
+        {
+          mb_master.readIreg(sensorSM200->getAdress(), 30000, sensor, Sensor::SensorSM200::size, cbRead);
+          update_mbmaster();
+          if (!sensor[SensorSM200::mberror])
           {
-          case 1:
-            sensor_SM200[counterMBRead]->setTemperature(sensor[SensorSM200::temper]);
-            sensor_SM200[counterMBRead]->setHumidity(sensor[SensorSM200::hum]);
-            // Serial.printf("Температура %d - %d\n", counterMBRead, sensor[SensorSM200::temper]);
-          default:
-            sensor_SM200[counterMBRead]->setStatus(sensor[SensorSM200::err]);
-            break;
+            switch (sensor[Sensor::SensorSM200::status])
+            {
+            case 1:
+              sensorSM200->setTemperature(static_cast<int>(sensor[Sensor::SensorSM200::temperature]));
+              sensorSM200->setHumidity(sensor[Sensor::SensorSM200::humidity]);
+              // Serial.printf("Температура %d - %d\n", sensorSM200->getAdress(), sensor[Sensor::SensorSM200::temperature]);
+            default:
+              sensorSM200->setStatus(sensor[Sensor::SensorSM200::status]);
+              break;
+            }
           }
-        else
-          sensor_SM200[counterMBRead]->setStatus(sensor[SensorSM200::mberror]);
-        break;
+          else
+          {
+            sensorSM200->setStatus(sensor[SensorSM200::mberror]);
+          }
+        }
       }
     }
-    counterMBRead > 4 ? counterMBRead = 0 : counterMBRead++;
-    vTaskDelay(TIME_UPDATE_MODBUS / portTICK_PERIOD_MS);
+    vTaskDelay(TIME_UPDATE_MODBUS_MB110 / portTICK_PERIOD_MS);
+    counterMBRead < TIME_UPDATE_MODBUS_SENSOR ? counterMBRead++ : counterMBRead = 1;
   }
 }
 
@@ -666,20 +689,35 @@ void updateGreenHouse(void *pvParameters)
   {
     if (millis() > 100000)
     {
-      if (!Rain.getAdress() || Rain.getRaiLevel() < RAIN_MAX) //  если не идет сильный дождь - регулируем  окна
+      int t_out_door = 0;
+      // if (OutDoorTemperature.getAdress())
+      // {
+      //   if (OutDoorTemperature.getStatus())
+      //   {
+      //     t_out_door = OutDoorTemperature.getTempVector();
+      //   }
+      // }
+      if (OutDoor.getAdress())
       {
-        int t_out_door = 0;
-        if (OutDoorTemperature.getAdress())
+        if (OutDoor.getStatus() == SensorRain::NO_ERROR)
         {
-          if (OutDoorTemperature.getStatus())
-            t_out_door = OutDoorTemperature.getTempVector();
+          if (8500 != OutDoor.getTemperature())
+            t_out_door = OutDoor.getTemperature();
         }
-        for (Teplica *t : arr_Tepl)
-          if (t->getSensorStatus() && t->getThereAreWindows())
+      }
+      for (Teplica *t : arr_Tepl)
+      {
+        Serial.printf("Сенсор %d - статус - %d\n", t->getAdressT(), t->getSensorStatus());
+        if (t->getSensorStatus() == Sensor::NO_ERROR && t->getThereAreWindows())
+        {
+          if (!OutDoor.getAdress() || OutDoor.getStatus() == SensorRain::ERROR) //  если не датчика дождя или у него ошбка - регулируем  окна
             t->regulationWindow(t->getTemperature(), t_out_door);
+          else if (OutDoor.getRaiLevel() < RAIN_MAX || t->getLevel() < 40) //  если есть датчик дождя  - если нет дождя или уровень меньше 40 - регулируем  окна
+            t->regulationWindow(t->getTemperature(), t_out_door);
+        }
       }
     }
-    vTaskDelay(TIME_UPDATE_GREENOOUSE / portTICK_PERIOD_MS);
+    vTaskDelay(TIME_UPDATE_GREENOOUSE * 60 * 1000 / portTICK_PERIOD_MS);
   }
 }
 
@@ -730,30 +768,30 @@ void analyseString(String incStr)
     }
     if (incStr.substring(i).startsWith("w4on")) //  переключение режим теплица 4 вентиляция - автомат
     {
-      Tepl4.getMode() == Teplica::AIR ? Tepl4.setMode(Teplica::AUTO) : Tepl4.setMode(Teplica::AIR);
+      Tepl4.setMode(Teplica::AIR);
       if (Teplica::AIR == Tepl4.getMode())
-      Tepl4.air(AIRTIME, 0);
+        Tepl4.air(AIRTIME, 0);
       return;
     }
     if (incStr.substring(i).startsWith("w5on")) //  переключение режим теплица 5 вентиляция - автомат
     {
-      Tepl5.getMode() == Teplica::AIR ? Tepl5.setMode(Teplica::AUTO) : Tepl5.setMode(Teplica::AIR);
+      Tepl5.setMode(Teplica::AIR);
       if (Teplica::AIR == Tepl5.getMode())
-      Tepl5.air(AIRTIME, 0);
+        Tepl5.air(AIRTIME, 0);
       return;
     }
     if (incStr.substring(i).startsWith("w6on")) //  переключение режим теплица 6 вентиляция - автомат
     {
-      Tepl6.getMode() == Teplica::AIR ? Tepl6.setMode(Teplica::AUTO) : Tepl6.setMode(Teplica::AIR);
+      Tepl6.setMode(Teplica::AIR);
       if (Teplica::AIR == Tepl6.getMode())
-      Tepl6.air(AIRTIME, 0);
+        Tepl6.air(AIRTIME, 0);
       return;
     }
     if (incStr.substring(i).startsWith("w7on")) //  переключение режим теплица 7 вентиляция - автомат
     {
-      Tepl7.getMode() == Teplica::AIR ? Tepl7.setMode(Teplica::AIR) : Tepl7.setMode(Teplica::AIR);
+      Tepl7.setMode(Teplica::AIR);
       if (Teplica::AIR == Tepl7.getMode())
-      Tepl7.air(AIRTIME, 0);
+        Tepl7.air(AIRTIME, 0);
       return;
     }
 
@@ -779,28 +817,24 @@ void analyseString(String incStr)
     }
     if (incStr.substring(i).startsWith("dh4")) //
     {
-      //Tepl4.getHeat() ? Tepl4.setHeat(OFF) : Tepl4.setHeat(ON);
       Tepl4.setMode(Teplica::DECREASE_IN_HUMIDITY);
       Tepl4.decrease_in_humidity(AIRTIME, 0);
       return;
     }
     if (incStr.substring(i).startsWith("dh5")) //
     {
-      //Tepl5.getHeat() ? Tepl5.setHeat(OFF) : Tepl5.setHeat(ON);
       Tepl5.setMode(Teplica::DECREASE_IN_HUMIDITY);
       Tepl5.decrease_in_humidity(AIRTIME, 0);
       return;
     }
-    if (incStr.substring(i).startsWith("dh")) //
+    if (incStr.substring(i).startsWith("dh6")) //
     {
-      //Tepl6.getHeat() ? Tepl6.setHeat(OFF) : Tepl6.setHeat(ON);
       Tepl6.setMode(Teplica::DECREASE_IN_HUMIDITY);
       Tepl6.decrease_in_humidity(AIRTIME, 0);
       return;
     }
-    if (incStr.substring(i).startsWith("dh")) //
+    if (incStr.substring(i).startsWith("dh7")) //
     {
-      //Tepl7.getHeat() ? Tepl7.setHeat(OFF) : Tepl7.setHeat(ON);
       Tepl7.setMode(Teplica::DECREASE_IN_HUMIDITY);
       Tepl7.decrease_in_humidity(AIRTIME, 0);
       return;
@@ -949,11 +983,11 @@ void pars_str_adr(String &str)
   sendNextion("page2.n3.val", arr_adr[6]);
   Tepl7.setCorrectionTemp(10 * arr_adr[7]);
   sendNextion("page2.t3.txt", String(arr_adr[7]));
-  OutDoorTemperature.setAdress(arr_adr[8]);
+  // OutDoorTemperature.setAdress(arr_adr[8]);
   sendNextion("page2.n6.val", arr_adr[8]);
-  OutDoorTemperature.setCorrectionTemp(10 * arr_adr[9]);
+  OutDoor.setCorrectionTemp(10 * arr_adr[9]);
   sendNextion("page2.t4.txt", String(arr_adr[9]));
-  Rain.setAdress(arr_adr[10]);
+  OutDoor.setAdress(arr_adr[10]);
   sendNextion("page2.n4.val", arr_adr[10]);
   mb11016p.setAdress(arr_adr[11]);
   sendNextion("page2.n5.val", arr_adr[11]);
@@ -971,19 +1005,19 @@ void saveOutModBusArr()
   slave.Hreg(rs485mode61, Tepl6.getLevel() | (Tepl6.getSetWindow() - Tepl6.getSetPump()) / 100 << 8);
   slave.Hreg(rs485mode7, Tepl7.getMode() | Tepl7.getPump() << 2 | Tepl7.getHeat() << 3 | Tepl7.getSetPump() / 10 << 8);
   slave.Hreg(rs485mode71, Tepl7.getLevel() | (Tepl7.getSetWindow() - Tepl7.getSetPump()) / 100 << 8);
-  slave.Hreg(rs485settings, Rain.getAdress() | OutDoorTemperature.getAdress() << 1 | Tepl4.getOpenTimeWindow() << 5);
+  slave.Hreg(rs485settings, OutDoor.getAdress() | OutDoor.getAdress() << 1 | Tepl4.getOpenTimeWindow() << 5);
   slave.Hreg(rs485temperature4, Tepl4.getTemperature() / 10);
   slave.Hreg(rs485temperature5, Tepl5.getTemperature() / 10);
   slave.Hreg(rs485temperature6, Tepl6.getTemperature() / 10);
   slave.Hreg(rs485temperature7, Tepl7.getTemperature() / 10);
-  slave.Hreg(rs485temperatureoutdoor, OutDoorTemperature.getTemperature() / 10);
+  slave.Hreg(rs485temperatureoutdoor, OutDoor.getTemperature() / 10);
   slave.Hreg(rs485humidity45, Tepl4.getHumidity() / 100 | Tepl5.getHumidity() / 100 << 8);
   slave.Hreg(rs485humidity67, Tepl6.getHumidity() / 100 | Tepl7.getHumidity() / 100 << 8);
-  slave.Hreg(rs485humidityoutdoor, OutDoorTemperature.getHumidity() / 100);
+  // slave.Hreg(rs485humidityoutdoor, OutDoorTemperature.getHumidity() / 100);
   slave.Hreg(rs485error45, Tepl4Temperature.getStatus() | Tepl5Temperature.getStatus() << 8);
   slave.Hreg(rs485error67, Tepl6Temperature.getStatus() | Tepl7Temperature.getStatus() << 8);
-  slave.Hreg(rs485error8, OutDoorTemperature.getStatus() | Tepl4.getHysteresis() / 10 << 8);
-  slave.Hreg(rs485rain, Rain.getRaiLevel());
+  slave.Hreg(rs485error8, OutDoor.getStatus() | Tepl4.getHysteresis() / 10 << 8);
+  slave.Hreg(rs485rain, OutDoor.getRaiLevel());
 
   // для SCADA
   int i = 0;
@@ -1003,11 +1037,11 @@ void saveOutModBusArr()
     slaveWiFi.Ireg(WiFiOpenTimeWindow4 + i, t->getOpenTimeWindow());
     i += 12;
   }
-  if (OutDoorTemperature.getAdress())
+  if (OutDoor.getAdress())
   {
-    slaveWiFi.Ireg(WiFitemperatureoutdoor, OutDoorTemperature.getTemperature());
-    slaveWiFi.Ireg(WiFihumidityoutdoor, OutDoorTemperature.getHumidity());
-    slaveWiFi.Ireg(WiFierroroutdoor, OutDoorTemperature.getStatus());
+    slaveWiFi.Ireg(WiFitemperatureoutdoor, OutDoor.getTemperature());
+    // slaveWiFi.Ireg(WiFihumidityoutdoor, OutDoorTemperature.getHumidity());
+    slaveWiFi.Ireg(WiFierroroutdoor, OutDoor.getStatus());
   }
   else
   {
@@ -1015,8 +1049,8 @@ void saveOutModBusArr()
     slaveWiFi.Ireg(WiFihumidityoutdoor, 0xffff);
     slaveWiFi.Ireg(WiFierroroutdoor, 0);
   }
-  if (Rain.getAdress())
-    slaveWiFi.Ireg(WiFirain, Rain.getRaiLevel());
+  if (OutDoor.getAdress())
+    slaveWiFi.Ireg(WiFirain, OutDoor.getRaiLevel());
   else
     slaveWiFi.Ireg(WiFirain, 0xfffa);
 }

@@ -1,17 +1,22 @@
+#pragma once
+
 #include <WiFi.h>
-#include "Preferences.h"
-#include "SoftwareSerial.h"
+#include <SoftwareSerial.h>
 #include <ESP32Ticker.h>
 #include <Bounce2.h>
 #include <ModbusRTU.h>
 #include <ModbusIP_ESP8266.h>
-#include "MB11016P_ESP.h"
-#include "SensorRain.h"
-#include <Teplica.h>
 #include <WiFi.h>
 #include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
+#include "ESPAsyncWebServer.h"
+
 #include <AsyncElegantOTA.h>
+
+#include "MB11016P_ESP.h"
+#include "SensorRain.h"
+#include "Preferences.h"
+#include "Teplica.h"
+//#include "SensorSm1911.h"
 
 // #define USE_WEB_SERIAL
 #define DEBUG_WIFI
@@ -32,23 +37,27 @@ AsyncWebServer server(80);
 #define ON HIGH
 #define OFF LOW
 
-const String VER = "Ver - 4.7.2. Date - "  + String(__DATE__) + "\r";
+const String VER = "Ver - 4.8.1. Date - "  + String(__DATE__) + "\r";
 int IDSLAVE = 47; // адрес в сети Modbus
 
  char* ssid = "yastrebovka";
  char* password =  "zerNo32_";
-// char *ssid = "Home-RP";
-// char *password = "12rp1974";
+//  char *ssid = "Home-RP";
+//  char *password = "12rp1974";
 
 //цвет на экране
-const double LIGHT = 57048;
-const double RED = 55688;
-const double GREEN = 2016;
-const double BLUE = 1566;
+const uint LIGHT = 57048;
+const uint RED = 55688;
+const uint GREEN = 2016;
+const uint BLUE = 1566;
 
-const double AIRTIME = 900000; // длительность проветривания и осушения 
-const int RAIN_MIN = 300; // средний дождь
-const int RAIN_MAX = 500; // сильный дождь
+const uint32_t AIRTIME = 900000; // длительность проветривания и осушения 
+const uint RAIN_MIN = 699; // средний дождь
+const uint RAIN_MAX = 700; // сильный дождь
+
+const uint TIME_UPDATE_GREENOOUSE = 6;  // период регулировки окон теплиц, мин
+const uint TIME_UPDATE_MODBUS_MB110 = 1000; // период обновления данных для блока реле, мсек
+const uint TIME_UPDATE_MODBUS_SENSOR = 20;   // период обновления данных от датчиков, сек
 
 SoftwareSerial SerialNextion;
 Ticker tickerWiFiConnect;
@@ -193,16 +202,15 @@ enum
 
 int modbusdateWiFi[WiFi_HOLDING_REGS_SIZE];
 unsigned long timesendnextion, time_updateGreenHouse;
-const unsigned long TIME_UPDATE_GREENOOUSE = 360000;
-const unsigned long TIME_UPDATE_MODBUS = 1000;
+
 long updateNextion;
 String pageNextion = "p0";
-int counterMBRead = 0;
-int coun1 = 0 ;
+uint counterMBRead = 0;
+int counSendtoNextion = 0;
 int arr_adr[12];
 int arr_set[8];
 
-boolean counterMB = true;
+//boolean counterMB = true;
 TaskHandle_t Task_updateGreenHouse;
 TaskHandle_t Task_updateDateSensor;
 TaskHandle_t Task_webSerialSend;
@@ -210,8 +218,9 @@ ModbusRTU slave;
 ModbusIP slaveWiFi;
 ModbusRTU mb_master;
 MB11016P_ESP mb11016p = MB11016P_ESP(&mb_master, 100, 2);
-Sensor OutDoorTemperature = Sensor(10, 0, 0);
-SensorRain Rain = SensorRain(1);
+//Sensor OutDoorTemperature = Sensor(10, 0, 0);
+// SensorSM1911 OutDoorTemperature = SensorSM1911(10, 0, 0);
+SensorRain OutDoor = SensorRain(1);
 Sensor Tepl4Temperature = Sensor(4, 0, 0);
 Sensor Tepl5Temperature = Sensor(5, 0, 0);
 Sensor Tepl6Temperature = Sensor(6, 0, 0);
@@ -222,7 +231,7 @@ Teplica Tepl6 = Teplica(6, &Tepl6Temperature, 8, 9, 10, 11, 30, 20, 40, 60, &mb1
 Teplica Tepl7 = Teplica(7, &Tepl7Temperature, 12, 13, 14, 15, 30, 20, 40,  60, &mb11016p);
 //Teplica Tepl7 = Teplica(7, &Tepl7Temperature, 12, 13, 14, 30, 20, 40, &mb11016p); // теплица без окон
 
-Sensor *sensor_SM200[5];
+Sensor *sensor_SM200[4];
 Teplica *arr_Tepl[4];
 
 // 0 - адрес устройства в сети Modbus, 1 - адрес  регистра в таблице Modbus, 2 - статус, 3- резерв, 4 - температура, 5 - влажность
@@ -272,7 +281,7 @@ void updateDateSensor(void *pvParameters);
 
 bool cbRead(Modbus::ResultCode event, uint16_t transactionId, void *data)
 {
-  Serial.printf("result:\t0x%02X\n", event);
+  //Serial.printf("result:\t0x%02X\n", event);
   sensor[SensorSM200::mberror] = event;
   return true;
 }

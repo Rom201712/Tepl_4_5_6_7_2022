@@ -10,19 +10,12 @@
   
 */
 // #include <Arduino.h>
+#pragma once
+
 #include <vector>
 
 class Sensor
 {
-    enum _Sensor
-    {
-        _status,
-        _firmware,
-        _temperature,
-        _humidity,
-        _SIZE
-    };
-
     int _adress;         // id устройства в массиве Modbus
     int _correctiontemp; // величина коррекции датчика температуры
     int _correctionhum;  // величина коррекции датчика влажности
@@ -33,22 +26,33 @@ class Sensor
     // std::vector<int> _humvec;
 
 public:
-    Sensor(int adress, int correctiontemp, int correctionhum) : _adress(adress), _correctiontemp(correctiontemp),
+
+static const uint NO_ERROR = 1;
+static const uint  NO_POWER = 0xffff;
+
+     Sensor(int adress, int correctiontemp, int correctionhum) : _adress(adress), _correctiontemp(correctiontemp),
                                                                 _correctionhum(correctionhum)
     {
     }
-
+ enum SensorSM200
+    {
+        status,
+        firmware,
+        temperature,
+        humidity,
+        size
+    };
     int getStatus()
     {
-        return _datesensor[_status];
+        return _datesensor[status];
     }
     int getTemperature()
     {
-        return _datesensor[_temperature];
+        return _datesensor[temperature];
     }
     int getHumidity()
     {
-        return _datesensor[_humidity];
+        return _datesensor[humidity];
     }
     void setAdress(int adr)
     {
@@ -56,16 +60,16 @@ public:
     }
     void setTemperature(int16_t t)
     {
-        _datesensor[_temperature] = t + _correctiontemp;
-        _tempvec.push_back(_datesensor[_temperature]);
+        _datesensor[temperature] = t + _correctiontemp;
+        _tempvec.push_back(_datesensor[temperature]);
     }
     void setHumidity(int h)
     {
-        _datesensor[_humidity] = h;
+        _datesensor[humidity] = h;
     }
     void setStatus(int s)
     {
-        _datesensor[_status] = s;
+        _datesensor[status] = s;
     }
 
     int getAdress()

@@ -1,5 +1,7 @@
-#include <Window.h>
-#include <Sensor.h>
+#pragma once
+
+#include "Window.h"
+#include "Sensor.h"
 
 class Teplica
 {
@@ -12,16 +14,16 @@ private:
     boolean flag_oldtemperature = true, _there_are_windows = true;
     unsigned long _time_air, _time_decrease_in_humidity, _time_close_window;
     const uint32_t _WAITING_ON_PUMP = 300000;
+    const uint AIRLEVEL = 25;
     MB11016P_ESP *__relay;
     Sensor *__sensor;
 
 public:
     // конструктор для SM_200 (датчик температуры) и MB110_16P (блок реле)
     Teplica(int id, Sensor *SM200, int relayPump, int relayHeat, int relayUp, int relayDown,
-            int setpump, int setheat, int setwindow, int opentimewindows, MB11016P_ESP *mb11016p) : 
-            _mode(AUTO), _id(id), _setpump(setpump), _setheat(setheat),
-            _setwindow(setwindow), _relayPump(relayPump),
-            _relayHeat(relayHeat), _relayUp(relayUp), _relayDown(relayDown)
+            int setpump, int setheat, int setwindow, int opentimewindows, MB11016P_ESP *mb11016p) : _mode(AUTO), _id(id), _setpump(setpump), _setheat(setheat),
+                                                                                                    _setwindow(setwindow), _relayPump(relayPump),
+                                                                                                    _relayHeat(relayHeat), _relayUp(relayUp), _relayDown(relayDown)
     {
         __window = new Window(mb11016p, relayUp, relayDown, opentimewindows);
         __relay = mb11016p;
@@ -62,7 +64,7 @@ public:
                 {
                     __relay->setOff(_relayWind);
                 }
-                //упраление основным нагревателем
+                //управление основным нагревателем
                 if (_setpump - temperature > _hysteresis >> 1)
                     if (millis() > _time_close_window)
                     {
@@ -74,12 +76,12 @@ public:
                     __relay->setOn(_relayHeat);
                 }
                 //управление основным нагревателем
-                if (temperature - _setpump > _hysteresis >> 1)
+                if (temperature > _setpump)
                 {
                     __relay->setOff(_relayPump);
                 }
                 //управление дополнительным нагревателем
-                if (temperature - _setpump > -50)
+                if (temperature > _setheat)
                 {
                     __relay->setOff(_relayHeat);
                 }
@@ -100,20 +102,16 @@ public:
                 }
             }
             //управление выключением нагревателей
-            if (temperature - _setpump > _hysteresis >> 1)
+            if (temperature > _setpump)
             {
                 __relay->setOff(_relayPump);
             }
             //управление дополнительным нагревателем
-            if (temperature - _setpump > -50)
+            if (temperature > _setheat)
             {
                 __relay->setOff(_relayHeat);
             }
         }
-        // else if (getMode() == MANUAL && !_there_are_windows)
-        // {
-        //     __relay->setOff(_relayWind);
-        // }
     }
     //управление окнами
     void regulationWindow(int temperature, int outdoortemperature)
@@ -130,11 +128,17 @@ public:
         {
             int Tout = 0;
             if (outdoortemperature)
-                Tout = constrain(map(outdoortemperature - _setpump, -1000, 1000, -5, 5), -5, 5);
+                Tout = constrain(map(outdoortemperature - _setpump, -1000, 1000, -5, 10), -5, 10);
             _temperatureIntegral += temperature - _setwindow;
             _counter++;
             // условие открытия окон
-            if (_oldtemperatute <= temperature) //если температура растет или не меняется
+            if (temperature > _setwindow + 500) // если очень жарко
+            {
+                __window->openWindow(30);
+                _temperatureIntegral = 0;
+                _counter = 0;
+            }
+            else if (_oldtemperatute <= temperature) //если температура не падает
             {
                 if (temperature > _setwindow + 250 && __window->getlevel() < 20)
                 {
@@ -150,17 +154,7 @@ public:
                     }
             }
             // условие закрытия окон
-            if (getLevel())
-            {
-                if (temperature < _setwindow && _oldtemperatute >= temperature)
-                    if (_temperatureIntegral < -100) //
-                    {
-                        __window->closeWindow(constrain(map(_counter, 1, 16, 15, 5), 5, 15) - Tout);
-                        _temperatureIntegral = 0;
-                        _counter = 0;
-                    }
-            }
-            if (temperature <= _setpump)
+            if (temperature <= _setpump + _hysteresis)
             {
                 if (_oldtemperatute >= temperature) //
                 {
@@ -176,20 +170,36 @@ public:
                     }
                 }
             }
+            else if (getLevel())
+            {
+                if(temperature < _setwindow && _oldtemperatute - temperature > 150 )
+                {
+                    __window->closeWindow(constrain(map(_counter, 1, 16, 15, 5), 5, 15) - Tout);
+                    _temperatureIntegral = 0;
+                    _counter = 0;
+                }
+                else if (temperature < _setwindow && _oldtemperatute >= temperature)
+                    if (_temperatureIntegral < -100) //
+                    {
+                        __window->closeWindow(constrain(map(_counter, 1, 16, 15, 5), 5, 15) - Tout);
+                        _temperatureIntegral = 0;
+                        _counter = 0;
+                    }
+            }
         }
-        Serial.printf("Tepl %d, temper: %d\n", getAdressT(), temperature);
-        Serial.printf("Tepl %d, oldtemper: %d\n", getAdressT(), _oldtemperatute);
-        Serial.printf("Tepl %d, temperSet: %d\n", getAdressT(), _setwindow);
-        Serial.printf("Tepl %d, integral: %d\n", getAdressT(), _temperatureIntegral);
-        Serial.printf("Tepl %d, coun: %d\n", getAdressT(), _counter);
-        Serial.printf("Tepl %d, level: %d\n\n", getAdressT(), getLevel());
+        // Serial.printf("Tepl %d, temper: %d\n", getAdressT(), temperature);
+        // Serial.printf("Tepl %d, oldtemper: %d\n", getAdressT(), _oldtemperatute);
+        // Serial.printf("Tepl %d, temperSet: %d\n", getAdressT(), _setwindow);
+        // Serial.printf("Tepl %d, integral: %d\n", getAdressT(), _temperatureIntegral);
+        // Serial.printf("Tepl %d, coun: %d\n", getAdressT(), _counter);
+        // Serial.printf("Tepl %d, level: %d\n\n", getAdressT(), getLevel());
         _oldtemperatute = temperature;
     }
 
     // режим проветривания
     void air(unsigned long airtime, int outdoortemperature)
     {
-        int Toutlevel = 25;
+        _time_air = millis() + airtime;
         if (!_there_are_windows)
         {
             __relay->setOn(_relayWind);
@@ -197,18 +207,17 @@ public:
         }
         else if (__relay->getRelay(_relayUp) || __relay->getRelay(_relayDown))
             return;
-        else if (getLevel() < Toutlevel)
+        else if (getLevel() < AIRLEVEL)
         {
-            __window->openWindow(Toutlevel - getLevel());
+            __window->openWindow(AIRLEVEL - getLevel());
         }
-        _time_air = millis() + airtime;
     }
 
     // режим осушения
     void decrease_in_humidity(unsigned long heattime, int outdoortemperature)
     {
+        _time_decrease_in_humidity = millis() + heattime;
         __relay->setOn(_relayPump);
-        int Toutlevel = 25;
         if (!_there_are_windows)
         {
             __relay->setOn(_relayWind);
@@ -216,9 +225,8 @@ public:
         }
         else if (__relay->getRelay(_relayUp) || __relay->getRelay(_relayDown))
             return;
-        else if (getLevel() < Toutlevel)
-            __window->openWindow(Toutlevel - getLevel());
-        _time_decrease_in_humidity = millis() + heattime;
+        else if (getLevel() < AIRLEVEL)
+            __window->openWindow(AIRLEVEL - getLevel());
     }
     void updateWorkWindows()
     {
@@ -231,29 +239,29 @@ public:
         {
             _mode = AUTO;
         }
+        if (_mode == AIR || _mode == DECREASE_IN_HUMIDITY)
+            if (getLevel() < AIRLEVEL)
+                __window->openWindow(AIRLEVEL - getLevel());
         alarm();
     }
     void alarm()
     {
         if (!_there_are_windows)
         {
-            if (1 == getSensorStatus())
+            if (Sensor::NO_ERROR == getSensorStatus())
             {
-                if (getTemperature() < _setheat)
+                if (getTemperature() <= _setheat)
                     _mode = AUTO;
                 if (getTemperature() - _setwindow > 300)
                     _mode = AUTO;
             }
             return;
         }
-        if (1 == getSensorStatus())
-            if (getTemperature() < _setheat)
+        if (Sensor::NO_ERROR == getSensorStatus())
+            if (getTemperature() <= _setheat)
             {
                 _mode = AUTO;
-                if (__window->getlevel())
-                    __window->closeWindow(getLevel() + 5);
-                else
-                    __relay->setOn(_relayPump);
+                __window->closeWindow(getLevel() + 5);
             }
     }
 

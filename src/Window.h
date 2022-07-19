@@ -1,8 +1,12 @@
+#pragma once
+
+#define ON HIGH
+#define OFF LOW
+
 class Window
 {
 private:
-#define ON HIGH
-#define OFF LOW
+
     int _changelevel;         // количество шагов закрытия/открытия окна (>0 - открытие, <0 - закрытие)
     unsigned long _timeopen;  // время выключения открытия окон
     unsigned long _timeclose; // время выключения закрытия окон
@@ -48,7 +52,7 @@ public:
     {
         if (changelevel + _level > 100)
             changelevel = 100 - _level;
-        if (__relay->getRelay(_relayUp) == 0 && __relay->getRelay(_relayDown) == 0)
+        if (__relay->getRelay(_relayUp) == OFF && __relay->getRelay(_relayDown) == OFF)
         {
             __relay->setOn(_relayUp);
             _timeopen = millis() + 10 * (static_cast<unsigned long>(changelevel * _opentimewindow));
@@ -58,7 +62,7 @@ public:
     //включение механизма закрытия окна
     void closeWindow(int changelevel)
     {
-        if (__relay->getRelay(_relayUp) == 0 && __relay->getRelay(_relayDown) == 0)
+        if (__relay->getRelay(_relayUp) == OFF && __relay->getRelay(_relayDown) == OFF)
         {
             __relay->setOn(_relayDown);
             _timeclose = millis() + 10 * (static_cast<unsigned long>(changelevel * _opentimewindow));
